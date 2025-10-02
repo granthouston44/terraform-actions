@@ -1,0 +1,129 @@
+name: Run Terratest
+description: Execute Go-based Terratests with streaming summaries and optional AWS credential configuration.
+author: Tesco Terraform Tooling Team
+inputs:
+  go_version:
+    description: Go toolchain version to install.
+    required: false
+    default: "1.23.6"
+  working_directory:
+    description: Directory containing Terratest sources.
+    required: false
+    default: "test"
+  test_pattern:
+    description: Specific test name (regex) to run. Use 'all' for the entire suite.
+    required: false
+    default: "all"
+  timeout:
+    description: Go test timeout value.
+    required: false
+    default: "20m"
+  run_go_mod_tidy:
+    description: Execute `go mod tidy` before running tests.
+    required: false
+    default: "true"
+  aws_role_to_assume:
+    description: Optional IAM role ARN to assume before running tests.
+    required: false
+    default: ""
+  aws_region:
+    description: AWS region used when assuming the role.
+    required: false
+    default: "eu-west-1"
+  aws_session_name:
+    description: Session name for STS assume-role calls.
+    required: false
+    default: "github-actions"
+outputs:
+  summary_path:
+    description: Relative path to the generated go test summary file (if present).
+    value: ${{ steps.set-outputs.outputs.summary_path }}
+  report_path:
+    description: Relative path to the generated go test JSON report (if present).
+    value: ${{ steps.set-outputs.outputs.report_path }}
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go_version }}
+        cache: true
+
+    - name: Go toolchain info
+      shell: bash
+      run: |
+        go version
+        go env GOROOT
+
+    - name: Sync Go modules
+      if: ${{ inputs.run_go_mod_tidy == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: go mod tidy
+
+    - name: Configure AWS credentials
+      if: ${{ inputs.aws_role_to_assume != '' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.aws_role_to_assume }}
+        aws-region: ${{ inputs.aws_region }}
+        role-session-name: ${{ inputs.aws_session_name }}
+
+    - name: Run Terratest suite
+      id: terratest
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      env:
+        TEST_PATTERN: ${{ inputs.test_pattern }}
+        TEST_TIMEOUT: ${{ inputs.timeout }}
+      run: |
+        set -o pipefail
+        SUMMARY_FILE=go-test-summary.txt
+        REPORT_FILE=go-test-report.json
+
+        if [ "$TEST_PATTERN" = "all" ]; then
+          go test -json -timeout "$TEST_TIMEOUT" ./... \
+            | tee "$REPORT_FILE" \
+            | go run ./cmd/gotestfmt \
+            | tee "$SUMMARY_FILE"
+        else
+          go test -json -timeout "$TEST_TIMEOUT" -run "^${TEST_PATTERN}$" ./... \
+            | tee "$REPORT_FILE" \
+            | go run ./cmd/gotestfmt \
+            | tee "$SUMMARY_FILE"
+        fi
+
+    - name: Publish test summary
+      if: ${{ always() }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      env:
+        TEST_PATTERN: ${{ inputs.test_pattern }}
+      run: |
+        SUMMARY_FILE=go-test-summary.txt
+        if [ -f "$SUMMARY_FILE" ]; then
+          LABEL="$TEST_PATTERN"
+          if [ -z "$LABEL" ] || [ "$LABEL" = "all" ]; then
+            LABEL="all tests"
+          fi
+          {
+            echo "### Terratest results ($LABEL)"
+            cat "$SUMMARY_FILE"
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Set action outputs
+      if: ${{ always() }}
+      id: set-outputs
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        SUMMARY_FILE=go-test-summary.txt
+        REPORT_FILE=go-test-report.json
+        if [ -f "$SUMMARY_FILE" ]; then
+          echo "summary_path=${{ inputs.working_directory }}/$SUMMARY_FILE" >> "$GITHUB_OUTPUT"
+        fi
+        if [ -f "$REPORT_FILE" ]; then
+          echo "report_path=${{ inputs.working_directory }}/$REPORT_FILE" >> "$GITHUB_OUTPUT"
+        fi

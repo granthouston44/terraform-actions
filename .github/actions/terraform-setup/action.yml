@@ -1,0 +1,91 @@
+name: Terraform Setup
+description: >-
+  Prepare a repository for Terraform execution: optionally configure Git for private modules,
+  install Terraform, run fmt/validate, and invoke tfsec.
+author: Tesco Terraform Tooling Team
+inputs:
+  terraform_version:
+    description: Terraform CLI version to install.
+    required: false
+    default: "1.8.5"
+  working_directory:
+    description: Directory containing Terraform configuration.
+    required: false
+    default: "."
+  github_token:
+    description: Token used for Git authentication and tfsec PR commenting.
+    required: false
+    default: ""
+  configure_private_modules:
+    description: Configure Git to access private modules via the provided GitHub token.
+    required: false
+    default: "true"
+  run_fmt:
+    description: Run `terraform fmt -check -diff`.
+    required: false
+    default: "true"
+  run_local_init:
+    description: Run `terraform init -backend=false -input=false`.
+    required: false
+    default: "true"
+  run_validate:
+    description: Run `terraform validate` after initialization.
+    required: false
+    default: "true"
+  tfsec_enabled:
+    description: Execute tfsec with soft-fail behaviour.
+    required: false
+    default: "true"
+  tfsec_minimum_severity:
+    description: Minimum severity for tfsec findings.
+    required: false
+    default: "high"
+  tfsec_additional_args:
+    description: Additional arguments appended to the tfsec command.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Configure Git for private modules
+      if: ${{ inputs.configure_private_modules == 'true' }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        if [ -z "$GITHUB_TOKEN" ]; then
+          echo "github_token input is required when configure_private_modules is true" >&2
+          exit 1
+        fi
+        git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+
+    - name: Terraform fmt check
+      if: ${{ inputs.run_fmt == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: terraform fmt -check -diff
+
+    - name: Terraform init (local)
+      if: ${{ inputs.run_local_init == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: terraform init -backend=false -input=false
+
+    - name: Terraform validate
+      if: ${{ inputs.run_validate == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: terraform validate -no-color
+
+    - name: Run tfsec
+      if: ${{ inputs.tfsec_enabled == 'true' }}
+      uses: aquasecurity/tfsec-pr-commenter-action@v1.3.1
+      with:
+        tfsec_args: >-
+          --soft-fail --minimum-severity ${{ inputs.tfsec_minimum_severity }}${{ inputs.tfsec_additional_args != '' && format(' {0}', inputs.tfsec_additional_args) || '' }}
+        github_token: ${{ inputs.github_token }}
