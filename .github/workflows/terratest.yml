@@ -94,7 +94,7 @@ jobs:
           echo "effective_role_arn=$ROLE_ARN" >> "$GITHUB_OUTPUT"
 
       - name: Summarise inputs and trigger context
-        uses: ./.github/actions/print-run-context
+        uses: granthouston44/terraform-actions/.github/actions/print-run-context@v0.1.2
         with:
           title: Terratest Workflow Context
           environment: ${{ inputs.environment }}
@@ -114,7 +114,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Terratest (composite)
-        uses: ./.github/actions/run-terratest
+        uses: granthouston44/terraform-actions/.github/actions/run-terratest@v0.1.2
         with:
           go_version: ${{ inputs.go_version }}
           working_directory: ${{ inputs.working_directory }}
