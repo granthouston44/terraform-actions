@@ -138,35 +138,21 @@ jobs:
           echo "effective_role_arn=$ROLE_ARN" >> "$GITHUB_OUTPUT"
 
       - name: Summarise inputs and trigger context
-        shell: bash
-        env:
-          ENVIRONMENT: ${{ inputs.environment }}
-          WORKDIR: ${{ inputs.working_directory }}
-          BACKEND: ${{ inputs.backend_config_file }}
-          VAR_FILE: ${{ inputs.var_file }}
-          PLAN_FILE: ${{ inputs.plan_file }}
-          GO_VERSION: ${{ inputs.go_version }}
-          TEST_DIR: ${{ inputs.terratest_working_directory }}
-          TEST_PATTERN: ${{ inputs.terratest_pattern }}
-          TEST_TIMEOUT: ${{ inputs.terratest_timeout }}
-          AWS_ROLE_ARN: ${{ steps.compute.outputs.effective_role_arn }}
-          AWS_ACCOUNT_ID: ${{ inputs.aws_account_id }}
-        run: |
-          {
-            echo "## Terraform Module Workflow Context"
-            echo "- Trigger: ${{ github.event_name }}"
-            echo "- Actor: ${{ github.actor }} (triggering: ${{ github.triggering_actor }})"
-            echo "- Ref: ${{ github.ref }}"
-            echo "- Workflow: ${{ github.workflow }} (#${{ github.run_number }}, id ${{ github.run_id }})"
-            echo "- Environment: ${ENVIRONMENT}"
-            echo "- Working directory: ${WORKDIR}"
-            echo "- Backend config file: ${BACKEND}"
-            echo "- Var file: ${VAR_FILE}"
-            echo "- Plan file: ${PLAN_FILE}"
-            echo "- Terratest: go ${GO_VERSION}, dir ${TEST_DIR}, pattern ${TEST_PATTERN}, timeout ${TEST_TIMEOUT}"
-            echo "- AWS account id: ${AWS_ACCOUNT_ID}"
-            echo "- AWS role ARN: ${AWS_ROLE_ARN}"
-          } >> "$GITHUB_STEP_SUMMARY"
+        uses: ./.github/actions/print-run-context
+        with:
+          title: Terraform Module Workflow Context
+          environment: ${{ inputs.environment }}
+          aws_account_id: ${{ inputs.aws_account_id }}
+          aws_role_arn: ${{ steps.compute.outputs.effective_role_arn }}
+          working_directory: ${{ inputs.working_directory }}
+          backend_config_file: ${{ inputs.backend_config_file }}
+          var_file: ${{ inputs.var_file }}
+          plan_file: ${{ inputs.plan_file }}
+          terraform_version: ${{ inputs.terraform_version }}
+          go_version: ${{ inputs.go_version }}
+          terratest_working_directory: ${{ inputs.terratest_working_directory }}
+          terratest_pattern: ${{ inputs.terratest_pattern }}
+          terratest_timeout: ${{ inputs.terratest_timeout }}
   terratest:
     name: Terratest
     runs-on: ubuntu-latest
