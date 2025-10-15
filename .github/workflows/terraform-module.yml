@@ -37,26 +37,6 @@ on:
         required: false
         type: string
         default: "tfplan"
-      go_version:
-        description: Go toolchain version for Terratest.
-        required: false
-        type: string
-        default: "1.23.6"
-      terratest_working_directory:
-        description: Directory containing Terratest sources.
-        required: false
-        type: string
-        default: "test"
-      terratest_pattern:
-        description: Test name regex or 'all'.
-        required: false
-        type: string
-        default: "all"
-      terratest_timeout:
-        description: Go test timeout value.
-        required: false
-        type: string
-        default: "20m"
       aws_role_to_assume:
         description: Optional IAM role ARN used by tests/plan/apply.
         required: false
@@ -97,11 +77,6 @@ on:
         required: false
         type: string
         default: ""
-      enable_terratest:
-        description: Run the Terratest job as part of this workflow.
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -149,31 +124,6 @@ jobs:
           var_file: ${{ inputs.var_file }}
           plan_file: ${{ inputs.plan_file }}
           terraform_version: ${{ inputs.terraform_version }}
-          go_version: ${{ inputs.go_version }}
-          terratest_working_directory: ${{ inputs.terratest_working_directory }}
-          terratest_pattern: ${{ inputs.terratest_pattern }}
-          terratest_timeout: ${{ inputs.terratest_timeout }}
-  terratest:
-    name: Terratest
-    runs-on: ubuntu-latest
-    if: ${{ inputs.enable_terratest }}
-    needs: context
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Run Terratest
-        if: ${{ needs.context.outputs.effective_role_arn != '' }}
-        uses: ./.github/actions/run-terratest
-        with:
-          go_version: ${{ inputs.go_version }}
-          working_directory: ${{ inputs.terratest_working_directory }}
-          test_pattern: ${{ inputs.terratest_pattern }}
-          timeout: ${{ inputs.terratest_timeout }}
-          aws_role_to_assume: ${{ needs.context.outputs.effective_role_arn }}
-          aws_region: ${{ inputs.aws_region }}
-          aws_session_name: ${{ inputs.aws_session_name }}
-
   plan:
     name: Plan
     runs-on: ubuntu-latest

@@ -1,0 +1,127 @@
+name: Terratest
+
+on:
+  workflow_call:
+    inputs:
+      go_version:
+        description: Go toolchain version for Terratest.
+        required: false
+        type: string
+        default: "1.23.6"
+      working_directory:
+        description: Directory containing Terratest sources.
+        required: false
+        type: string
+        default: "test"
+      test_pattern:
+        description: Test name regex or 'all'.
+        required: false
+        type: string
+        default: "all"
+      timeout:
+        description: Go test timeout value.
+        required: false
+        type: string
+        default: "20m"
+      aws_role_to_assume:
+        description: Optional IAM role ARN used by tests.
+        required: false
+        type: string
+        default: ""
+      aws_account_id:
+        description: Optional AWS account ID. If provided and aws_role_to_assume is empty, a role ARN will be constructed.
+        required: false
+        type: string
+        default: ""
+      role_name:
+        description: Base role name used when constructing the role ARN from aws_account_id; environment will be appended as a suffix.
+        required: false
+        type: string
+        default: "ims-terraform-infrastructure-role"
+      environment:
+        description: Environment suffix for role name and display context.
+        required: false
+        type: string
+        default: "sandbox"
+      aws_region:
+        description: AWS region for assumed role.
+        required: false
+        type: string
+        default: "eu-west-1"
+      aws_session_name:
+        description: Session name for STS assume-role calls.
+        required: false
+        type: string
+        default: "github-actions"
+      formatter:
+        description: Output formatter to use: 'gotestfmt' or 'gotestsum'.
+        required: false
+        type: string
+        default: "gotestsum"
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: terratest-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  context:
+    name: Run Context
+    runs-on: ubuntu-latest
+    outputs:
+      effective_role_arn: ${{ steps.compute.outputs.effective_role_arn }}
+    steps:
+      - name: Compute effective role ARN
+        id: compute
+        shell: bash
+        env:
+          IN_ROLE_ARN: ${{ inputs.aws_role_to_assume }}
+          IN_ACCOUNT: ${{ inputs.aws_account_id }}
+          ROLE_BASE: ${{ inputs.role_name }}
+          ENV: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          ROLE_ARN="$IN_ROLE_ARN"
+          if [ -z "$ROLE_ARN" ] && [ -n "$IN_ACCOUNT" ]; then
+            BASE_NAME="${ROLE_BASE:-ims-terraform-infrastructure-role}"
+            ROLE_NAME="${BASE_NAME}-${ENV}"
+            ROLE_ARN="arn:aws:iam::${IN_ACCOUNT}:role/${ROLE_NAME}"
+          fi
+          echo "effective_role_arn=$ROLE_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Summarise inputs and trigger context
+        uses: ./.github/actions/print-run-context
+        with:
+          title: Terratest Workflow Context
+          environment: ${{ inputs.environment }}
+          aws_account_id: ${{ inputs.aws_account_id }}
+          aws_role_arn: ${{ steps.compute.outputs.effective_role_arn }}
+          go_version: ${{ inputs.go_version }}
+          terratest_working_directory: ${{ inputs.working_directory }}
+          terratest_pattern: ${{ inputs.test_pattern }}
+          terratest_timeout: ${{ inputs.timeout }}
+
+  terratest:
+    name: Run Terratest
+    runs-on: ubuntu-latest
+    needs: context
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Terratest (composite)
+        uses: ./.github/actions/run-terratest
+        with:
+          go_version: ${{ inputs.go_version }}
+          working_directory: ${{ inputs.working_directory }}
+          test_pattern: ${{ inputs.test_pattern }}
+          timeout: ${{ inputs.timeout }}
+          aws_role_to_assume: ${{ needs.context.outputs.effective_role_arn }}
+          aws_region: ${{ inputs.aws_region }}
+          aws_session_name: ${{ inputs.aws_session_name }}
+          formatter: ${{ inputs.formatter }}
+
