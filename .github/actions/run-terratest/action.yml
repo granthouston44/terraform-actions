@@ -34,6 +34,10 @@ inputs:
     description: Session name for STS assume-role calls.
     required: false
     default: "github-actions"
+  formatter:
+    description: Output formatter to use: 'gotestfmt' (default) or 'gotestsum'.
+    required: false
+    default: "gotestfmt"
 outputs:
   summary_path:
     description: Relative path to the generated go test summary file (if present).
@@ -62,6 +66,11 @@ runs:
       working-directory: ${{ inputs.working_directory }}
       run: go mod tidy
 
+    - name: Install gotestsum
+      if: ${{ inputs.formatter == 'gotestsum' }}
+      shell: bash
+      run: go install gotest.tools/gotestsum@v1.13.0
+
     - name: Configure AWS credentials
       if: ${{ inputs.aws_role_to_assume != '' }}
       uses: aws-actions/configure-aws-credentials@v4
@@ -77,21 +86,47 @@ runs:
       env:
         TEST_PATTERN: ${{ inputs.test_pattern }}
         TEST_TIMEOUT: ${{ inputs.timeout }}
+        FORMATTER: ${{ inputs.formatter }}
       run: |
         set -o pipefail
         SUMMARY_FILE=go-test-summary.txt
         REPORT_FILE=go-test-report.json
 
-        if [ "$TEST_PATTERN" = "all" ]; then
-          go test -json -timeout "$TEST_TIMEOUT" ./... \
-            | tee "$REPORT_FILE" \
-            | go run ./cmd/gotestfmt \
-            | tee "$SUMMARY_FILE"
+        if [ "$FORMATTER" = "gotestsum" ]; then
+          if [ "$TEST_PATTERN" = "all" ]; then
+            gotestsum \
+              --format=testname \
+              --format-icons=hivis \
+              --no-color \
+              --jsonfile "$REPORT_FILE" \
+              -- \
+              --timeout "$TEST_TIMEOUT" \
+              ./... \
+              | tee "$SUMMARY_FILE"
+          else
+            gotestsum \
+              --format=testname \
+              --format-icons=hivis \
+              --no-color \
+              --jsonfile "$REPORT_FILE" \
+              -- \
+              --timeout "$TEST_TIMEOUT" \
+              -run "^${TEST_PATTERN}$" \
+              ./... \
+              | tee "$SUMMARY_FILE"
+          fi
         else
-          go test -json -timeout "$TEST_TIMEOUT" -run "^${TEST_PATTERN}$" ./... \
-            | tee "$REPORT_FILE" \
-            | go run ./cmd/gotestfmt \
-            | tee "$SUMMARY_FILE"
+          if [ "$TEST_PATTERN" = "all" ]; then
+            go test -json -timeout "$TEST_TIMEOUT" ./... \
+              | tee "$REPORT_FILE" \
+              | go run ./cmd/gotestfmt \
+              | tee "$SUMMARY_FILE"
+          else
+            go test -json -timeout "$TEST_TIMEOUT" -run "^${TEST_PATTERN}$" ./... \
+              | tee "$REPORT_FILE" \
+              | go run ./cmd/gotestfmt \
+              | tee "$SUMMARY_FILE"
+          fi
         fi
 
     - name: Publish test summary
