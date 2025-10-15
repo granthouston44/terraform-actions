@@ -35,7 +35,7 @@ inputs:
     required: false
     default: "github-actions"
   formatter:
-    description: Output formatter to use: 'gotestfmt' (default) or 'gotestsum'.
+    description: "Output formatter to use: 'gotestfmt' (default) or 'gotestsum'."
     required: false
     default: "gotestfmt"
 outputs:
