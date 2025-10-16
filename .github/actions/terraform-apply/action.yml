@@ -21,6 +21,22 @@ inputs:
     description: AWS region for credentials configuration.
     required: false
     default: "eu-west-1"
+  backend_config_file:
+    description: Optional path to a .tfbackend file. If provided, this takes precedence over computed config.
+    required: false
+    default: ""
+  backend_bucket_prefix:
+    description: Prefix for S3 backend bucket name; actual bucket is <prefix><environment> when computing config.
+    required: false
+    default: "ims-terraform-infrastructure-state-"
+  backend_lock_table_prefix:
+    description: Prefix for DynamoDB lock table name; actual table is <prefix><environment> when computing config.
+    required: false
+    default: "ims-terraform-infrastructure-state-lock-"
+  backend_key:
+    description: Optional state object key; if empty, defaults to ims-<repo>-<environment>.tfstate
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -59,9 +75,27 @@ runs:
       run: |
         set -euo pipefail
         ENV_NAME="${{ inputs.environment }}"
-        BACKEND_CONFIG_FILE="env/${ENV_NAME}/${ENV_NAME}.tfbackend"
         PLAN_FILE="plan-${ENV_NAME}.tfplan"
-        terraform init -input=false -reconfigure -backend-config="$BACKEND_CONFIG_FILE"
+        if [ -n "${{ inputs.backend_config_file }}" ]; then
+          terraform init -input=false -reconfigure -backend-config="${{ inputs.backend_config_file }}"
+        elif [ -f "env/${ENV_NAME}/${ENV_NAME}.tfbackend" ]; then
+          terraform init -input=false -reconfigure -backend-config="env/${ENV_NAME}/${ENV_NAME}.tfbackend"
+        else
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          KEY="${{ inputs.backend_key }}"
+          if [ -z "$KEY" ]; then
+            KEY="ims-${REPO_NAME}-${ENV_NAME}.tfstate"
+          fi
+          BUCKET="${{ inputs.backend_bucket_prefix }}${ENV_NAME}"
+          TABLE="${{ inputs.backend_lock_table_prefix }}${ENV_NAME}"
+          REGION="${{ inputs.aws_region }}"
+          terraform init -input=false -reconfigure \
+            -backend-config="bucket=${BUCKET}" \
+            -backend-config="key=${KEY}" \
+            -backend-config="region=${REGION}" \
+            -backend-config="dynamodb_table=${TABLE}" \
+            -backend-config="encrypt=true"
+        fi
         APPLY_ARGS=("-input=false" "$PLAN_FILE")
         echo "Running: terraform apply ${APPLY_ARGS[*]}"
         terraform apply "${APPLY_ARGS[@]}"
