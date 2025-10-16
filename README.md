@@ -5,22 +5,20 @@ Reusable GitHub composite actions maintained by the Tesco tooling team to standa
 ## Provided Actions
 
 ### `.github/actions/terraform-setup`
-Bootstrap Terraform repositories with optional private module access, CLI installation, fmt/validate checks, and tfsec scanning.
+Bootstrap Terraform repositories: configure private module access, install Terraform, run fmt/validate, and run tfsec (always on).
 
 ```yaml
 - uses: actions/checkout@v4
 - uses: org/terraform-actions/.github/actions/terraform-setup@v0
   with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-    terraform_version: 1.8.5
-    working_directory: infra
-    tfsec_enabled: true
+    terraform_version: 1.8.5 # optional; defaults to 1.8.5
 ```
 
+Notes:
+- Runs in the job's working directory. Set `defaults.run.working-directory` in your workflow or add `working-directory` on the step to target a module folder.
+
 Key inputs:
-- `github_token` – required when `configure_private_modules` is `true` (default); grants tfsec access for PR comments.
-- `run_fmt`, `run_local_init`, `run_validate` – toggle individual Terraform commands.
-- `tfsec_minimum_severity`, `tfsec_additional_args` – tailor policy thresholds.
+- `terraform_version` – optional; version of Terraform CLI to install (default: 1.8.5).
 
 ### `.github/actions/run-terratest`
 Install the Go toolchain, optionally assume an AWS role, and execute Terratest suites with summarised output.
