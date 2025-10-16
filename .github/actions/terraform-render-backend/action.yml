@@ -1,0 +1,53 @@
+name: Terraform Render Backend
+description: Optionally render env-scoped .tfbackend from a template using standard conventions.
+author: Tesco Terraform Tooling Team
+inputs:
+  environment:
+    description: Environment name used to choose output path (env/<env>/<env>.tfbackend)
+    required: true
+  working_directory:
+    description: Directory containing Terraform configuration (template is resolved relative to here)
+    required: false
+    default: "."
+  template:
+    description: Path to backend template file (relative to working_directory)
+    required: false
+    default: "backend-config.template"
+runs:
+  using: composite
+  steps:
+    - name: Render backend config (if template exists)
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      env:
+        ENV_NAME: ${{ inputs.environment }}
+        REPO_NAME: ${{ github.repository }}
+        TEMPLATE_PATH: ${{ inputs.template }}
+      run: |
+        set -euo pipefail
+        if [ ! -f "$TEMPLATE_PATH" ]; then
+          echo "No backend template found at $TEMPLATE_PATH; skipping render." >&2
+          exit 0
+        fi
+        OUT_DIR="env/${ENV_NAME}"
+        mkdir -p "$OUT_DIR"
+        OUT_FILE="${OUT_DIR}/${ENV_NAME}.tfbackend"
+        REPO_BASENAME="${REPO_NAME##*/}"
+        export ENV="$ENV_NAME"
+        export REPO="$REPO_BASENAME"
+        export BUCKET="ims-terraform-infrastructure-state-${ENV_NAME}"
+        export LOCK_TABLE="ims-terraform-infrastructure-state-lock-${ENV_NAME}"
+        export REGION="eu-west-1"
+        export KEY="ims-${REPO_BASENAME}-${ENV_NAME}.tfstate"
+        if command -v envsubst >/dev/null 2>&1; then
+          envsubst < "$TEMPLATE_PATH" > "$OUT_FILE"
+        else
+          echo "envsubst not available; writing default backend config" >&2
+          cat > "$OUT_FILE" <<EOF
+bucket         = "$BUCKET"
+key            = "$KEY"
+region         = "$REGION"
+dynamodb_table = "$LOCK_TABLE"
+EOF
+        fi
+        echo "Rendered backend to $OUT_FILE"

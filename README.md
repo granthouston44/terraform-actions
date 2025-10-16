@@ -39,6 +39,28 @@ Notes:
 - Uses `gotestsum` by default; no fmt/validate/tfsec here (covered by `terraform-setup` in deploy workflows).
 - Outputs `summary_path` and `report_path` can feed artifacts or downstream reporting steps.
 
+### `.github/actions/terraform-render-backend`
+Optionally render an env-scoped `.tfbackend` file from a template before setup/plan/apply.
+
+Conventions:
+- Template path (relative to working directory): `backend-config.template`
+- Output path: `env/<env>/<env>.tfbackend`
+- Available template variables (via `envsubst`): `ENV`, `REPO`, `BUCKET`, `LOCK_TABLE`, `REGION`, `KEY`
+- Defaults used when rendering:
+  - `BUCKET=ims-terraform-infrastructure-state-<env>`
+  - `LOCK_TABLE=ims-terraform-infrastructure-state-lock-<env>`
+  - `REGION=eu-west-1`
+  - `KEY=ims-<repo>-<env>.tfstate`
+
+Usage:
+```yaml
+- uses: org/terraform-actions/.github/actions/terraform-render-backend@v1
+  with:
+    environment: sandbox
+    working_directory: infra
+    # template: backend-config.template # optional
+```
+
 ### `.github/actions/terraform-plan-apply`
 Removed in v1.0.0. Prefer composing `terraform-setup` → `terraform-plan` and `terraform-apply` in workflows with stage gates.
 

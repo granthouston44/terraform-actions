@@ -32,47 +32,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  context:
-    name: Run Context
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-    outputs:
-      effective_role_arn: ${{ steps.compute.outputs.effective_role_arn }}
-    steps:
-      - name: Compute effective role ARN
-        id: compute
-        shell: bash
-        env:
-          ENV: ${{ inputs.environment }}
-          ROLE_BASE: ims-terraform-infrastructure-role
-          ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          ACCT="$ACCOUNT"
-          ROLE_ARN=""
-          if [ -n "${ACCT}" ]; then
-            ROLE_ARN="arn:aws:iam::${ACCT}:role/${ROLE_BASE}-${ENV}"
-          fi
-          echo "account_id=${ACCT}" >> "$GITHUB_OUTPUT"
-          echo "effective_role_arn=${ROLE_ARN}" >> "$GITHUB_OUTPUT"
-
-      - name: Summarise inputs and trigger context
-        uses: granthouston44/terraform-actions/.github/actions/print-run-context@v1
-        with:
-          title: Terraform Module Workflow Context
-          environment: ${{ inputs.environment }}
-          aws_account_id: ${{ steps.compute.outputs.account_id }}
-          aws_role_arn: ${{ steps.compute.outputs.effective_role_arn }}
-          working_directory: ${{ inputs.working_directory }}
-          backend_config_file: computed (ims-terraform-infrastructure-state-<env>, ims-<repo>-<env>.tfstate)
-          var_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfvars
-          plan_file: plan-${{ inputs.environment }}.tfplan
-          terraform_version: 1.8.5
-          notes: "Reusable Terraform Module Workflow"
   plan:
     name: Plan
     runs-on: ubuntu-latest
-    needs: context
     environment: ${{ inputs.environment }}
     env:
       TF_VERSION: '1.8.5'
@@ -88,11 +50,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Render backend config (optional)
+        uses: granthouston44/terraform-actions/.github/actions/terraform-render-backend@v1
+        with:
+          environment: ${{ inputs.environment }}
+          working_directory: ${{ inputs.working_directory }}
+
+      - name: Summarise inputs
+        uses: granthouston44/terraform-actions/.github/actions/print-run-context@v1
+        with:
+          title: Terraform Module Workflow Context
+          environment: ${{ inputs.environment }}
+          aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
+          aws_role_arn: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ims-terraform-infrastructure-role-${{ inputs.environment }}
+          working_directory: ${{ inputs.working_directory }}
+          backend_config_file: computed (ims-terraform-infrastructure-state-<env>, ims-<repo>-<env>.tfstate)
+          var_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfvars
+          plan_file: plan-${{ inputs.environment }}.tfplan
+          terraform_version: 1.8.5
+          notes: "Reusable Terraform Module Workflow"
+
       - name: Configure AWS credentials
-        if: ${{ needs.context.outputs.effective_role_arn != '' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ needs.context.outputs.effective_role_arn }}
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ims-terraform-infrastructure-role-${{ inputs.environment }}
           aws-region: eu-west-1
           role-session-name: github-actions
 
@@ -138,11 +119,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Render backend config (optional)
+        uses: granthouston44/terraform-actions/.github/actions/terraform-render-backend@v1
+        with:
+          environment: ${{ inputs.environment }}
+          working_directory: ${{ inputs.working_directory }}
+
       - name: Configure AWS credentials
-        if: ${{ needs.context.outputs.effective_role_arn != '' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ needs.context.outputs.effective_role_arn }}
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ims-terraform-infrastructure-role-${{ inputs.environment }}
           aws-region: eu-west-1
           role-session-name: github-actions
 
