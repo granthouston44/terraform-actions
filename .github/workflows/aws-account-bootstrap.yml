@@ -68,6 +68,8 @@ jobs:
 
       - name: Terraform setup
         uses: granthouston44/terraform-actions/.github/actions/terraform-setup@v1
+        with:
+          environment: ${{ inputs.environment }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -80,7 +82,6 @@ jobs:
         uses: granthouston44/terraform-actions/.github/actions/terraform-plan@v1
         with:
           environment: ${{ inputs.environment }}
-          backend_config_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfbackend
           var_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfvars
 
       - name: Terraform apply (optional)
@@ -88,5 +89,4 @@ jobs:
         uses: granthouston44/terraform-actions/.github/actions/terraform-apply@v1
         with:
           environment: ${{ inputs.environment }}
-          backend_config_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfbackend
           aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}

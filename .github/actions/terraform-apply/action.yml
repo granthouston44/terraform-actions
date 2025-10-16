@@ -9,10 +9,6 @@ inputs:
   environment:
     description: Environment name (sandbox/dev/prod) used to derive backend path and role
     required: true
-  backend_config_file:
-    description: Optional path to a .tfbackend file. If provided, this takes precedence over computed config.
-    required: false
-    default: ""
 runs:
   using: composite
   steps:
@@ -29,21 +25,7 @@ runs:
         set -euo pipefail
         ENV_NAME="${{ inputs.environment }}"
         PLAN_FILE="plan-${ENV_NAME}.tfplan"
-        if [ -n "${{ inputs.backend_config_file }}" ]; then
-          terraform init -input=false -reconfigure -backend-config="${{ inputs.backend_config_file }}"
-        else
-          REPO_NAME="${GITHUB_REPOSITORY##*/}"
-          KEY="ims-${REPO_NAME}-${ENV_NAME}.tfstate"
-          BUCKET="ims-terraform-infrastructure-state-${ENV_NAME}"
-          TABLE="ims-terraform-infrastructure-state-lock-${ENV_NAME}"
-          REGION="eu-west-1"
-          terraform init -input=false -reconfigure \
-            -backend-config="bucket=${BUCKET}" \
-            -backend-config="key=${KEY}" \
-            -backend-config="region=${REGION}" \
-            -backend-config="dynamodb_table=${TABLE}" \
-            -backend-config="encrypt=true"
-        fi
+        terraform init -input=false -reconfigure -backend-config="env/${ENV_NAME}/${ENV_NAME}.tfbackend"
         APPLY_ARGS=("-input=false" "$PLAN_FILE")
         echo "Running: terraform apply ${APPLY_ARGS[*]}"
         terraform apply "${APPLY_ARGS[@]}"

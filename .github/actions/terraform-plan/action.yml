@@ -9,14 +9,6 @@ inputs:
   environment:
     description: Environment name (sandbox/dev/prod) used to derive backend/plan paths and role
     required: true
-  var_file:
-    description: Optional path to a tfvars file relative to working_directory.
-    required: false
-    default: ""
-  backend_config_file:
-    description: Optional path to a .tfbackend file. If provided, this takes precedence over computed config.
-    required: false
-    default: ""
   
 outputs:
   plan_status:
@@ -37,28 +29,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Terraform init
-      shell: bash
-      working-directory: ${{ inputs.working_directory }}
-      run: |
-        set -euo pipefail
-        ENV_NAME="${{ inputs.environment }}"
-        if [ -n "${{ inputs.backend_config_file }}" ]; then
-          terraform init -input=false -reconfigure -backend-config="${{ inputs.backend_config_file }}"
-        else
-          REPO_NAME="${GITHUB_REPOSITORY##*/}"
-          KEY="ims-${REPO_NAME}-${ENV_NAME}.tfstate"
-          BUCKET="ims-terraform-infrastructure-state-${ENV_NAME}"
-          TABLE="ims-terraform-infrastructure-state-lock-${ENV_NAME}"
-          REGION="eu-west-1"
-          terraform init -input=false -reconfigure \
-            -backend-config="bucket=${BUCKET}" \
-            -backend-config="key=${KEY}" \
-            -backend-config="region=${REGION}" \
-            -backend-config="dynamodb_table=${TABLE}" \
-            -backend-config="encrypt=true"
-        fi
-
     - name: Terraform plan
       id: plan
       shell: bash
@@ -67,14 +37,7 @@ runs:
         set -euo pipefail
         ENV_NAME="${{ inputs.environment }}"
         PLAN_FILE="plan-${ENV_NAME}.tfplan"
-        PLAN_ARGS=("-input=false" "-no-color" "-detailed-exitcode" "-out=$PLAN_FILE")
-        if [ -n "${{ inputs.var_file }}" ]; then
-          if [ -f "${{ inputs.var_file }}" ]; then
-            PLAN_ARGS+=("-var-file=${{ inputs.var_file }}")
-          else
-            echo "Warning: var_file path '${{ inputs.var_file }}' not found; continuing without it" >&2
-          fi
-        fi
+        PLAN_ARGS=("-input=false" "-no-color" "-detailed-exitcode" "-out=$PLAN_FILE" "-var-file=env/${ENV_NAME}/${ENV_NAME}.tfvars")
         set +e
         terraform plan "${PLAN_ARGS[@]}"
         EXIT_CODE=$?
