@@ -1,35 +1,27 @@
 name: Terraform Plan and Apply
-description: Run Terraform init with backend configuration, produce a plan (optionally detailed), and apply it when required.
+description: Delegate to individual plan/apply composites and compute standard backend/plan paths from environment.
 author: Tesco Terraform Tooling Team
+
 inputs:
   working_directory:
     description: Directory containing Terraform configuration.
     required: false
     default: "."
-  backend_config_file:
-    description: Optional backend config (defaults typically to env/<env>.backend.hcl from caller).
-    required: false
-    default: ""
+  environment:
+    description: Environment name (sandbox/dev/prod) used to derive backend/plan paths
+    required: true
   run_plan:
     description: Execute terraform plan.
     required: false
     default: "true"
   plan_file:
-    description: Output plan file path.
-    required: false
-    default: "terraform.tfplan"
-  var_file:
-    description: Optional tfvars file passed to terraform plan/apply (defaults typically to env/<env>.tfvars from caller).
+    description: Optional plan file name. Defaults to plan-<env>.tfplan
     required: false
     default: ""
-  use_detailed_exitcode:
-    description: (Deprecated) Always enabled internally.
+  var_file:
+    description: Optional tfvars file. If empty, none is passed.
     required: false
-    default: "true"
-  emit_plan_json:
-    description: (Deprecated) Always enabled internally.
-    required: false
-    default: "true"
+    default: ""
   run_apply:
     description: Execute terraform apply after plan.
     required: false
@@ -46,153 +38,63 @@ inputs:
     description: Terraform CLI version to install.
     required: false
     default: "1.8.5"
+
 outputs:
   plan_status:
     description: Result of terraform plan (changes, no_changes, or empty when skipped).
-    value: ${{ steps.plan.outputs.plan_status }}
+    value: ${{ steps.plan_wrap.outputs.plan_status }}
   plan_exit_code:
     description: Exit code returned by terraform plan (useful with -detailed-exitcode).
-    value: ${{ steps.plan.outputs.plan_exit_code }}
+    value: ${{ steps.plan_wrap.outputs.plan_exit_code }}
   plan_file:
     description: Path to the generated plan file.
-    value: ${{ steps.plan.outputs.plan_file }}
+    value: ${{ steps.plan_wrap.outputs.plan_file }}
   plan_text_path:
     description: Path to the rendered human-readable plan file.
-    value: ${{ steps.capture.outputs.plan_text_path }}
+    value: ${{ steps.plan_wrap.outputs.plan_text_path }}
   plan_json_path:
     description: Path to the rendered JSON plan file.
-    value: ${{ steps.capture.outputs.plan_json_path }}
+    value: ${{ steps.plan_wrap.outputs.plan_json_path }}
+
 runs:
   using: composite
   steps:
-    - name: Set up Terraform
-      uses: hashicorp/setup-terraform@v3
+    - name: Compute backend and plan paths
+      id: paths
+      shell: bash
+      env:
+        ENV: ${{ inputs.environment }}
+        IN_PLAN: ${{ inputs.plan_file }}
+      run: |
+        set -euo pipefail
+        PLAN_FILE="$IN_PLAN"
+        if [ -z "$PLAN_FILE" ]; then
+          PLAN_FILE="plan-${ENV}.tfplan"
+        fi
+        echo "plan_file=$PLAN_FILE" >> "$GITHUB_OUTPUT"
+        echo "backend_config_file=env/${ENV}/${ENV}.tfbackend" >> "$GITHUB_OUTPUT"
+
+    - name: Terraform plan (composite)
+      id: plan_wrap
+      if: ${{ inputs.run_plan == 'true' }}
+      uses: ./.github/actions/terraform-plan
       with:
+        working_directory: ${{ inputs.working_directory }}
+        backend_config_file: ${{ steps.paths.outputs.backend_config_file }}
+        var_file: ${{ inputs.var_file }}
+        plan_file: ${{ steps.paths.outputs.plan_file }}
+        aws_role_to_assume: ${{ inputs.aws_role_to_assume }}
         terraform_version: ${{ inputs.terraform_version }}
 
-    - name: Configure AWS credentials
-      if: ${{ inputs.aws_role_to_assume != '' }}
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ inputs.aws_role_to_assume }}
-        aws-region: eu-west-1
-        role-session-name: github-actions
-
-    - name: Terraform init
-      shell: bash
-      working-directory: ${{ inputs.working_directory }}
-      env:
-        BACKEND_CONFIG_FILE: ${{ inputs.backend_config_file }}
-      run: |
-        set -euo pipefail
-        INIT_ARGS=("-input=false" "-reconfigure")
-
-        if [ -n "$BACKEND_CONFIG_FILE" ]; then
-          INIT_ARGS+=("-backend-config=${BACKEND_CONFIG_FILE}")
-        fi
-
-        echo "Running: terraform init ${INIT_ARGS[*]}"
-        terraform init "${INIT_ARGS[@]}"
-
-    - name: Terraform plan
-      id: plan
-      if: ${{ inputs.run_plan == 'true' }}
-      shell: bash
-      working-directory: ${{ inputs.working_directory }}
-      env:
-        PLAN_FILE: ${{ inputs.plan_file }}
-        VAR_FILE: ${{ inputs.var_file }}
-        DETAILED_EXITCODE: "true"
-      run: |
-        set -euo pipefail
-
-        PLAN_ARGS=("-input=false" "-no-color")
-
-        if [ "$DETAILED_EXITCODE" = "true" ]; then
-          PLAN_ARGS+=("-detailed-exitcode")
-        fi
-
-        if [ -n "$VAR_FILE" ]; then
-          PLAN_ARGS+=("-var-file=${VAR_FILE}")
-        fi
-
-
-        PLAN_ARGS+=("-out=${PLAN_FILE}")
-
-        echo "Running: terraform plan ${PLAN_ARGS[*]}"
-        set +e
-        terraform plan "${PLAN_ARGS[@]}"
-        EXIT_CODE=$?
-        set -e
-
-        case $EXIT_CODE in
-          0)
-            PLAN_STATUS="no_changes"
-            ;;
-          2)
-            PLAN_STATUS="changes"
-            ;;
-          *)
-            echo "terraform plan failed with exit code $EXIT_CODE" >&2
-            exit "$EXIT_CODE"
-            ;;
-        esac
-
-        echo "plan_status=$PLAN_STATUS" >> "$GITHUB_OUTPUT"
-        echo "plan_exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
-        echo "plan_file=$(pwd)/$PLAN_FILE" >> "$GITHUB_OUTPUT"
-
-    - name: Capture plan outputs
-      id: capture
-      if: ${{ inputs.run_plan == 'true' && success() }}
-      shell: bash
-      working-directory: ${{ inputs.working_directory }}
-      env:
-        PLAN_FILE: ${{ inputs.plan_file }}
-        EMIT_JSON: "true"
-      run: |
-        set -euo pipefail
-        HUMAN_READABLE_PATH="plan.txt"
-        JSON_PATH=""
-
-        terraform show -no-color "$PLAN_FILE" > "$HUMAN_READABLE_PATH"
-
-        if [ "$EMIT_JSON" = "true" ]; then
-          JSON_PATH="plan.json"
-          terraform show -json "$PLAN_FILE" > "$JSON_PATH"
-        fi
-
-        echo "plan_text_path=$(pwd)/$HUMAN_READABLE_PATH" >> "$GITHUB_OUTPUT"
-        if [ -n "$JSON_PATH" ]; then
-          echo "plan_json_path=$(pwd)/$JSON_PATH" >> "$GITHUB_OUTPUT"
-        fi
-
-    - name: Terraform apply
+    - name: Terraform apply (composite)
       if: ${{ inputs.run_apply == 'true' }}
-      shell: bash
-      working-directory: ${{ inputs.working_directory }}
-      env:
-        PLAN_FILE: ${{ inputs.plan_file }}
-        VAR_FILE: ${{ inputs.var_file }}
-        AUTO_APPROVE: ${{ inputs.apply_auto_approve }}
-        RAN_PLAN: ${{ inputs.run_plan }}
-      run: |
-        set -euo pipefail
+      uses: ./.github/actions/terraform-apply
+      with:
+        working_directory: ${{ inputs.working_directory }}
+        backend_config_file: ${{ steps.paths.outputs.backend_config_file }}
+        var_file: ${{ inputs.var_file }}
+        plan_file: ${{ steps.paths.outputs.plan_file }}
+        apply_auto_approve: ${{ inputs.apply_auto_approve }}
+        aws_role_to_assume: ${{ inputs.aws_role_to_assume }}
+        terraform_version: ${{ inputs.terraform_version }}
 
-        APPLY_ARGS=("-input=false")
-
-        if [ "$AUTO_APPROVE" = "true" ]; then
-          APPLY_ARGS+=("-auto-approve")
-        fi
-
-        if [ -n "$VAR_FILE" ] && [ "$RAN_PLAN" != "true" ]; then
-          APPLY_ARGS+=("-var-file=${VAR_FILE}")
-        fi
-
-
-        if [ -f "$PLAN_FILE" ]; then
-          APPLY_ARGS+=("$PLAN_FILE")
-        fi
-
-        echo "Running: terraform apply ${APPLY_ARGS[*]}"
-        terraform apply "${APPLY_ARGS[@]}"
