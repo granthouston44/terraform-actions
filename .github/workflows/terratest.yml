@@ -23,41 +23,11 @@ on:
         required: false
         type: string
         default: "20m"
-      aws_role_to_assume:
-        description: Optional IAM role ARN used by tests.
-        required: false
-        type: string
-        default: ""
-      aws_account_id:
-        description: Optional AWS account ID. If provided and aws_role_to_assume is empty, a role ARN will be constructed.
-        required: false
-        type: string
-        default: ""
-      role_name:
-        description: Base role name used when constructing the role ARN from aws_account_id; environment will be appended as a suffix.
-        required: false
-        type: string
-        default: "ims-terraform-infrastructure-role"
       environment:
-        description: Environment suffix for role name and display context.
+        description: Environment name used to resolve AWS account and role.
         required: false
         type: string
         default: "sandbox"
-      aws_region:
-        description: AWS region for assumed role.
-        required: false
-        type: string
-        default: "eu-west-1"
-      aws_session_name:
-        description: Session name for STS assume-role calls.
-        required: false
-        type: string
-        default: "github-actions"
-      formatter:
-        description: "Output formatter to use: 'gotestfmt' or 'gotestsum'."
-        required: false
-        type: string
-        default: "gotestsum"
   workflow_dispatch:
     inputs:
       go_version:
@@ -125,26 +95,32 @@ jobs:
         id: compute
         shell: bash
         env:
-          IN_ROLE_ARN: ${{ inputs.aws_role_to_assume }}
-          IN_ACCOUNT: ${{ inputs.aws_account_id }}
-          ROLE_BASE: ${{ inputs.role_name }}
           ENV: ${{ inputs.environment }}
+          ROLE_BASE: ims-terraform-infrastructure-role
+          AWS_ACCOUNT_ID_SANDBOX: ${{ secrets.AWS_ACCOUNT_ID_SANDBOX }}
+          AWS_ACCOUNT_ID_DEV: ${{ secrets.AWS_ACCOUNT_ID_DEV }}
+          AWS_ACCOUNT_ID_PROD: ${{ secrets.AWS_ACCOUNT_ID_PROD }}
         run: |
           set -euo pipefail
-          ROLE_ARN="$IN_ROLE_ARN"
-          if [ -z "$ROLE_ARN" ] && [ -n "$IN_ACCOUNT" ]; then
-            BASE_NAME="${ROLE_BASE:-ims-terraform-infrastructure-role}"
-            ROLE_NAME="${BASE_NAME}-${ENV}"
-            ROLE_ARN="arn:aws:iam::${IN_ACCOUNT}:role/${ROLE_NAME}"
+          case "$ENV" in
+            sandbox) ACCT="$AWS_ACCOUNT_ID_SANDBOX" ;;
+            dev)     ACCT="$AWS_ACCOUNT_ID_DEV" ;;
+            prod)    ACCT="$AWS_ACCOUNT_ID_PROD" ;;
+            *)       ACCT="" ;;
+          esac
+          ROLE_ARN=""
+          if [ -n "${ACCT}" ]; then
+            ROLE_ARN="arn:aws:iam::${ACCT}:role/${ROLE_BASE}-${ENV}"
           fi
-          echo "effective_role_arn=$ROLE_ARN" >> "$GITHUB_OUTPUT"
+          echo "account_id=${ACCT}" >> "$GITHUB_OUTPUT"
+          echo "effective_role_arn=${ROLE_ARN}" >> "$GITHUB_OUTPUT"
 
       - name: Summarise inputs and trigger context
         uses: granthouston44/terraform-actions/.github/actions/print-run-context@v0.1.3
         with:
           title: Terratest Workflow Context
           environment: ${{ inputs.environment }}
-          aws_account_id: ${{ inputs.aws_account_id }}
+          aws_account_id: ${{ steps.compute.outputs.account_id }}
           aws_role_arn: ${{ steps.compute.outputs.effective_role_arn }}
           go_version: ${{ inputs.go_version }}
           terratest_working_directory: ${{ inputs.working_directory }}
@@ -167,6 +143,6 @@ jobs:
           test_pattern: ${{ inputs.test_pattern }}
           timeout: ${{ inputs.timeout }}
           aws_role_to_assume: ${{ needs.context.outputs.effective_role_arn }}
-          aws_region: ${{ inputs.aws_region }}
-          aws_session_name: ${{ inputs.aws_session_name }}
-          formatter: ${{ inputs.formatter }}
+          aws_region: eu-west-1
+          aws_session_name: github-actions
+          formatter: gotestsum
