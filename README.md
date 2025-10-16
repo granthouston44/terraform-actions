@@ -49,6 +49,7 @@ Run terraform plan for a given environment and upload plan artifacts for cross-j
   with:
     environment: sandbox
 ```
+Note: Ensure Terraform is installed first (use `terraform-setup`).
 
 ### `.github/actions/terraform-apply`
 Download the previously uploaded plan artifact and apply it for a given environment.
@@ -58,6 +59,7 @@ Download the previously uploaded plan artifact and apply it for a given environm
   with:
     environment: sandbox
 ```
+Note: Ensure Terraform is installed first (use `terraform-setup`).
 
 ## Reusable Workflow
 
