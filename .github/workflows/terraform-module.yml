@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Summarise inputs
-        uses: granthouston44/terraform-actions/.github/actions/print-run-context@v1
+        uses: ./.github/actions/print-run-context
         with:
           title: Terraform Module Workflow Context
           environment: ${{ inputs.environment }}
@@ -72,13 +72,13 @@ jobs:
           role-session-name: github-actions
 
       - name: Terraform setup
-        uses: granthouston44/terraform-actions/.github/actions/terraform-setup@v1
+        uses: ./.github/actions/terraform-setup
         with:
           environment: ${{ inputs.environment }}
 
       - name: Terraform plan
         id: plan
-        uses: granthouston44/terraform-actions/.github/actions/terraform-plan@v1
+        uses: ./.github/actions/terraform-plan
         with:
           working_directory: ${{ inputs.working_directory }}
           environment: ${{ inputs.environment }}
@@ -121,12 +121,12 @@ jobs:
           role-session-name: github-actions
 
       - name: Terraform setup
-        uses: granthouston44/terraform-actions/.github/actions/terraform-setup@v1
+        uses: ./.github/actions/terraform-setup
         with:
           environment: ${{ inputs.environment }}
 
       - name: Terraform apply
-        uses: granthouston44/terraform-actions/.github/actions/terraform-apply@v1
+        uses: ./.github/actions/terraform-apply
         with:
           working_directory: ${{ inputs.working_directory }}
           environment: ${{ inputs.environment }}

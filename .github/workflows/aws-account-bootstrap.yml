@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Print run context
-        uses: granthouston44/terraform-actions/.github/actions/print-run-context@v1
+        uses: ./.github/actions/print-run-context
         with:
           title: AWS Account Bootstrap Context
           environment: ${{ inputs.environment }}
@@ -67,7 +67,7 @@ jobs:
           notes: "AWS Account Bootstrap"
 
       - name: Terraform setup
-        uses: granthouston44/terraform-actions/.github/actions/terraform-setup@v1
+        uses: ./.github/actions/terraform-setup
         with:
           environment: ${{ inputs.environment }}
 
@@ -79,7 +79,7 @@ jobs:
           role-session-name: github-actions
 
       - name: Terraform plan
-        uses: granthouston44/terraform-actions/.github/actions/terraform-plan@v1
+        uses: ./.github/actions/terraform-plan
         with:
           working_directory: ${{ inputs.working_directory }}
           environment: ${{ inputs.environment }}
@@ -87,7 +87,7 @@ jobs:
 
       - name: Terraform apply (optional)
         if: ${{ inputs.apply_auto_approve == true }}
-        uses: granthouston44/terraform-actions/.github/actions/terraform-apply@v1
+        uses: ./.github/actions/terraform-apply
         with:
           working_directory: ${{ inputs.working_directory }}
           environment: ${{ inputs.environment }}

@@ -80,7 +80,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Summarise inputs and trigger context
-        uses: granthouston44/terraform-actions/.github/actions/print-run-context@v1
+        uses: ./.github/actions/print-run-context
         with:
           title: Terratest Workflow Context
           environment: ${{ inputs.environment }}
@@ -93,7 +93,7 @@ jobs:
           notes: "Reusable Terratest Workflow"
 
       - name: Run Terratest (composite)
-        uses: granthouston44/terraform-actions/.github/actions/run-terratest@v1
+        uses: ./.github/actions/run-terratest
         with:
           go_version: ${{ inputs.go_version }}
           terraform_version: ${{ inputs.terraform_version }}
