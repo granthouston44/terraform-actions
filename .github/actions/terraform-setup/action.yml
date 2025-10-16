@@ -24,6 +24,38 @@ runs:
           git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
         fi
 
+    - name: Render backend config (optional)
+      shell: bash
+      env:
+        ENV_NAME: ${{ inputs.environment }}
+        REPO_NAME: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        TEMPLATE_PATH="backend-config.template"
+        if [ -f "$TEMPLATE_PATH" ]; then
+          OUT_DIR="env/${ENV_NAME}"
+          mkdir -p "$OUT_DIR"
+          OUT_FILE="${OUT_DIR}/${ENV_NAME}.tfbackend"
+          REPO_BASENAME="${REPO_NAME##*/}"
+          export ENV="$ENV_NAME"
+          export REPO="$REPO_BASENAME"
+          export BUCKET="ims-terraform-infrastructure-state-${ENV_NAME}"
+          export LOCK_TABLE="ims-terraform-infrastructure-state-lock-${ENV_NAME}"
+          export REGION="eu-west-1"
+          export KEY="ims-${REPO_BASENAME}-${ENV_NAME}.tfstate"
+          if command -v envsubst >/dev/null 2>&1; then
+            envsubst < "$TEMPLATE_PATH" > "$OUT_FILE"
+          else
+            cat > "$OUT_FILE" <<EOF
+bucket         = "$BUCKET"
+key            = "$KEY"
+region         = "$REGION"
+dynamodb_table = "$LOCK_TABLE"
+EOF
+          fi
+          echo "Rendered backend to $OUT_FILE"
+        fi
+
     - name: Set up Terraform
       uses: hashicorp/setup-terraform@v3
       with:

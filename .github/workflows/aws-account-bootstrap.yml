@@ -52,12 +52,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Render backend config (optional)
-        uses: granthouston44/terraform-actions/.github/actions/terraform-render-backend@v1
-        with:
-          environment: ${{ inputs.environment }}
-          working_directory: ${{ inputs.working_directory }}
-
       - name: Print run context
         uses: granthouston44/terraform-actions/.github/actions/print-run-context@v1
         with:
