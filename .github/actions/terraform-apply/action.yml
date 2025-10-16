@@ -1,5 +1,5 @@
 name: Terraform Apply
-description: Download plan artifact, compute backend path from environment, and run terraform apply. Assumes AWS credentials configured by the caller.
+description: Compute backend path from environment and run terraform apply with env-scoped tfvars. Assumes AWS credentials configured by the caller.
 author: Tesco Terraform Tooling Team
 inputs:
   working_directory:
@@ -12,20 +12,10 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Download plan artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: tfplan
-        path: ${{ inputs.working_directory }}
-
     - name: Terraform apply
       shell: bash
       working-directory: ${{ inputs.working_directory }}
       run: |
-        set -euo pipefail
         ENV_NAME="${{ inputs.environment }}"
-        PLAN_FILE="plan-${ENV_NAME}.tfplan"
         terraform init -input=false -reconfigure -backend-config="env/${ENV_NAME}/${ENV_NAME}.tfbackend"
-        APPLY_ARGS=("-input=false" "$PLAN_FILE")
-        echo "Running: terraform apply ${APPLY_ARGS[*]}"
-        terraform apply "${APPLY_ARGS[@]}"
+        terraform apply -input=false -auto-approve -var-file="env/${ENV_NAME}/${ENV_NAME}.tfvars"
