@@ -56,6 +56,55 @@ Handle backend-aware init, change-aware planning, optional JSON exports, and gat
 
 Outputs include `plan_status`, `plan_exit_code`, and paths to the rendered plan artifacts for use in comments or uploads. Apply is skipped unless `run_apply: true` and can be paired with required environment approvals.
 
+### `.github/actions/terraform-plan`
+A thin wrapper around the plan portion of `terraform-plan-apply` that also uploads the plan artifacts for cross-job reuse.
+
+```yaml
+- uses: org/terraform-actions/.github/actions/terraform-plan@v0
+  with:
+    working_directory: infra
+    backend_config_file: env/sandbox.backend.hcl
+    var_file: env/sandbox.tfvars
+    plan_file: sandbox.tfplan
+    artifact_name: tfplan
+```
+
+### `.github/actions/terraform-apply`
+Downloads a previously uploaded plan artifact and performs an apply, delegating to `terraform-plan-apply` under the hood.
+
+```yaml
+- uses: org/terraform-actions/.github/actions/terraform-apply@v0
+  with:
+    working_directory: infra
+    backend_config_file: env/sandbox.backend.hcl
+    var_file: env/sandbox.tfvars
+    plan_file: sandbox.tfplan
+    artifact_name: tfplan
+```
+
+## Reusable Workflow
+
+### `.github/workflows/terraform-module.yml`
+Orchestrates a standard module lifecycle: Terratest → Plan (PR comment) → gated Apply. Intended to be called from consumer repositories with environment protections.
+
+```yaml
+name: Terraform CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  module:
+    uses: org/terraform-actions/.github/workflows/terraform-module.yml@v0
+    with:
+      working_directory: infra
+      backend_config_file: env/sandbox.backend.hcl
+      var_file: env/sandbox.tfvars
+      environment: prod
+    secrets: inherit
+```
+
 ## Versioning
 
 Tag git releases (for example `v0.1.0`) and reference them from consumer workflows with the corresponding ref. Each release should include a changelog entry summarising behaviour changes.

@@ -1,0 +1,100 @@
+name: Terraform Plan
+description: Wrapper around terraform-plan-apply to run plan and publish artifacts.
+author: Tesco Terraform Tooling Team
+inputs:
+  working_directory:
+    description: Directory containing Terraform configuration.
+    required: false
+    default: "."
+  backend_config_file:
+    description: Optional backend configuration file passed to terraform init.
+    required: false
+    default: ""
+  var_file:
+    description: Optional tfvars file passed to terraform plan.
+    required: false
+    default: ""
+  plan_file:
+    description: Output plan file path.
+    required: false
+    default: "terraform.tfplan"
+  additional_init_args:
+    description: Extra arguments appended to terraform init.
+    required: false
+    default: ""
+  additional_plan_args:
+    description: Additional arguments appended to terraform plan.
+    required: false
+    default: ""
+  use_detailed_exitcode:
+    description: Use terraform plan -detailed-exitcode to capture change status.
+    required: false
+    default: "true"
+  emit_plan_json:
+    description: Generate terraform show -json output alongside the human-readable plan summary.
+    required: false
+    default: "true"
+  artifact_name:
+    description: Name for the uploaded plan artifact.
+    required: false
+    default: "tfplan"
+  aws_role_to_assume:
+    description: Optional IAM role ARN to assume before running Terraform.
+    required: false
+    default: ""
+  aws_region:
+    description: AWS region used when assuming the role.
+    required: false
+    default: "eu-west-1"
+  aws_session_name:
+    description: Session name for STS assume-role calls.
+    required: false
+    default: "github-actions"
+outputs:
+  plan_status:
+    description: Result of terraform plan (changes, no_changes).
+    value: ${{ steps.plan.outputs.plan_status }}
+  plan_exit_code:
+    description: Exit code returned by terraform plan (useful with -detailed-exitcode).
+    value: ${{ steps.plan.outputs.plan_exit_code }}
+  plan_file:
+    description: Path to the generated plan file.
+    value: ${{ steps.plan.outputs.plan_file }}
+  plan_text_path:
+    description: Path to the rendered human-readable plan file.
+    value: ${{ steps.plan.outputs.plan_text_path }}
+  plan_json_path:
+    description: Path to the rendered JSON plan file (empty when disabled).
+    value: ${{ steps.plan.outputs.plan_json_path }}
+runs:
+  using: composite
+  steps:
+    - name: Terraform plan
+      id: plan
+      uses: ./.github/actions/terraform-plan-apply
+      with:
+        working_directory: ${{ inputs.working_directory }}
+        backend_config_file: ${{ inputs.backend_config_file }}
+        additional_init_args: ${{ inputs.additional_init_args }}
+        run_plan: true
+        plan_file: ${{ inputs.plan_file }}
+        var_file: ${{ inputs.var_file }}
+        additional_plan_args: ${{ inputs.additional_plan_args }}
+        use_detailed_exitcode: ${{ inputs.use_detailed_exitcode }}
+        emit_plan_json: ${{ inputs.emit_plan_json }}
+        run_apply: false
+        aws_role_to_assume: ${{ inputs.aws_role_to_assume }}
+        aws_region: ${{ inputs.aws_region }}
+        aws_session_name: ${{ inputs.aws_session_name }}
+
+    - name: Upload plan artifact
+      if: ${{ steps.plan.outputs.plan_file != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: |
+          ${{ steps.plan.outputs.plan_file }}
+          ${{ steps.plan.outputs.plan_text_path }}
+          ${{ steps.plan.outputs.plan_json_path }}
+        if-no-files-found: ignore
+
