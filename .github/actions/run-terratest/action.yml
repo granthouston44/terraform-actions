@@ -34,6 +34,10 @@ inputs:
     description: Session name for STS assume-role calls.
     required: false
     default: "github-actions"
+  terraform_version:
+    description: Terraform CLI version to install.
+    required: false
+    default: "1.8.5"
   formatter:
     description: "Output formatter to use: 'gotestfmt' (default) or 'gotestsum'."
     required: false
@@ -48,6 +52,10 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
@@ -87,6 +95,7 @@ runs:
         TEST_PATTERN: ${{ inputs.test_pattern }}
         TEST_TIMEOUT: ${{ inputs.timeout }}
         FORMATTER: ${{ inputs.formatter }}
+        TERRAFORM_BINARY: terraform
       run: |
         set -o pipefail
         SUMMARY_FILE=go-test-summary.txt
