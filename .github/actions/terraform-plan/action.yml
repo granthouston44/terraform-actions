@@ -29,6 +29,11 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Terraform init (backend)
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: terraform init -input=false -reconfigure -backend-config="env/${{ inputs.environment }}/${{ inputs.environment }}.tfbackend"
+
     - name: Terraform plan
       id: plan
       shell: bash
@@ -39,11 +44,15 @@ runs:
         set +e
         terraform plan -input=false -no-color -detailed-exitcode -out="$PLAN_FILE" -var-file="env/${ENV_NAME}/${ENV_NAME}.tfvars"
         ec=$?
-        [ $ec -gt 1 ] && exit $ec
-        status=$([ $ec -eq 2 ] && echo changes || echo no_changes)
-        echo "plan_status=$status" >> "$GITHUB_OUTPUT"
-        echo "plan_exit_code=$ec" >> "$GITHUB_OUTPUT"
-        echo "plan_file=$(pwd)/$PLAN_FILE" >> "$GITHUB_OUTPUT"
+        if [ $ec -eq 0 ] || [ $ec -eq 2 ]; then
+          status=$([ $ec -eq 2 ] && echo changes || echo no_changes)
+          echo "plan_status=$status" >> "$GITHUB_OUTPUT"
+          echo "plan_exit_code=$ec" >> "$GITHUB_OUTPUT"
+          echo "plan_file=$(pwd)/$PLAN_FILE" >> "$GITHUB_OUTPUT"
+          exit 0
+        else
+          exit $ec
+        fi
 
     - name: Capture plan outputs
       id: capture
