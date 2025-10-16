@@ -46,12 +46,12 @@ runs:
           if command -v envsubst >/dev/null 2>&1; then
             envsubst < "$TEMPLATE_PATH" > "$OUT_FILE"
           else
-            cat > "$OUT_FILE" <<EOF
-bucket         = "$BUCKET"
-key            = "$KEY"
-region         = "$REGION"
-dynamodb_table = "$LOCK_TABLE"
-EOF
+            printf '%s\n' \
+              "bucket         = \"$BUCKET\"" \
+              "key            = \"$KEY\"" \
+              "region         = \"$REGION\"" \
+              "dynamodb_table = \"$LOCK_TABLE\"" \
+              > "$OUT_FILE"
           fi
           echo "Rendered backend to $OUT_FILE"
         fi
