@@ -1,23 +1,18 @@
 name: Terraform Apply
-description: Download a plan artifact and apply using terraform-plan-apply.
+description: Download plan artifact, compute standard backend path from environment, assume role via env-scoped vars, and run terraform apply.
 author: Tesco Terraform Tooling Team
 inputs:
   working_directory:
     description: Directory containing Terraform configuration.
     required: false
     default: "."
-  backend_config_file:
-    description: Optional backend configuration file passed to terraform init.
-    required: false
-    default: ""
-  var_file:
-    description: Optional tfvars file passed to terraform apply (used when no plan file is provided).
-    required: false
-    default: ""
+  environment:
+    description: Environment name (sandbox/dev/prod) used to derive backend path and role
+    required: true
   plan_file:
-    description: Plan file name to apply (downloaded via artifact).
+    description: Plan file name to apply (downloaded via artifact). Defaults to plan-<env>.tfplan
     required: false
-    default: "terraform.tfplan"
+    default: ""
   artifact_name:
     description: Name of the plan artifact to download.
     required: false
@@ -26,10 +21,6 @@ inputs:
     description: Use -auto-approve when running terraform apply.
     required: false
     default: "false"
-  aws_role_to_assume:
-    description: Optional IAM role ARN to assume before running Terraform.
-    required: false
-    default: ""
   terraform_version:
     description: Terraform CLI version to install.
     required: false
@@ -43,15 +34,49 @@ runs:
         name: ${{ inputs.artifact_name }}
         path: ${{ inputs.working_directory }}
 
-    - name: Terraform apply
-      uses: ./.github/actions/terraform-plan-apply
+    - name: Compute backend and plan paths
+      id: paths
+      shell: bash
+      env:
+        ENV: ${{ inputs.environment }}
+        IN_PLAN: ${{ inputs.plan_file }}
+      run: |
+        set -euo pipefail
+        PLAN_FILE="$IN_PLAN"
+        if [ -z "$PLAN_FILE" ]; then
+          PLAN_FILE="plan-${ENV}.tfplan"
+        fi
+        echo "plan_file=$PLAN_FILE" >> "$GITHUB_OUTPUT"
+        echo "backend_config_file=env/${ENV}/${ENV}.tfbackend" >> "$GITHUB_OUTPUT"
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
       with:
-        working_directory: ${{ inputs.working_directory }}
-        backend_config_file: ${{ inputs.backend_config_file }}
-        run_plan: false
-        plan_file: ${{ inputs.plan_file }}
-        var_file: ${{ inputs.var_file }}
-        apply_auto_approve: ${{ inputs.apply_auto_approve }}
-        run_apply: true
-        aws_role_to_assume: ${{ inputs.aws_role_to_assume }}
         terraform_version: ${{ inputs.terraform_version }}
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ims-terraform-infrastructure-role-${{ inputs.environment }}
+        aws-region: eu-west-1
+        role-session-name: github-actions
+
+    - name: Terraform apply
+      shell: bash
+      with:
+        
+      working-directory: ${{ inputs.working_directory }}
+      env:
+        BACKEND_CONFIG_FILE: ${{ steps.paths.outputs.backend_config_file }}
+        PLAN_FILE: ${{ steps.paths.outputs.plan_file }}
+        AUTO_APPROVE: ${{ inputs.apply_auto_approve }}
+      run: |
+        set -euo pipefail
+        terraform init -input=false -reconfigure -backend-config="$BACKEND_CONFIG_FILE"
+        APPLY_ARGS=("-input=false")
+        if [ "$AUTO_APPROVE" = "true" ]; then
+          APPLY_ARGS+=("-auto-approve")
+        fi
+        APPLY_ARGS+=("$PLAN_FILE")
+        echo "Running: terraform apply ${APPLY_ARGS[*]}"
+        terraform apply "${APPLY_ARGS[@]}"
