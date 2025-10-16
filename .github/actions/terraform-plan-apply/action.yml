@@ -23,11 +23,11 @@ inputs:
     required: false
     default: ""
   use_detailed_exitcode:
-    description: Use terraform plan -detailed-exitcode to capture change status.
+    description: (Deprecated) Always enabled internally.
     required: false
     default: "true"
   emit_plan_json:
-    description: Generate terraform show -json output alongside the human-readable plan summary.
+    description: (Deprecated) Always enabled internally.
     required: false
     default: "true"
   run_apply:
@@ -102,7 +102,7 @@ runs:
       env:
         PLAN_FILE: ${{ inputs.plan_file }}
         VAR_FILE: ${{ inputs.var_file }}
-        DETAILED_EXITCODE: ${{ inputs.use_detailed_exitcode }}
+        DETAILED_EXITCODE: "true"
       run: |
         set -euo pipefail
 
@@ -149,7 +149,7 @@ runs:
       working-directory: ${{ inputs.working_directory }}
       env:
         PLAN_FILE: ${{ inputs.plan_file }}
-        EMIT_JSON: ${{ inputs.emit_plan_json }}
+        EMIT_JSON: "true"
       run: |
         set -euo pipefail
         HUMAN_READABLE_PATH="plan.txt"
