@@ -75,6 +75,7 @@ jobs:
         uses: granthouston44/terraform-actions/.github/actions/terraform-setup@main
         with:
           environment: ${{ inputs.environment }}
+          working_directory: ${{ inputs.working_directory }}
 
       - name: Terraform plan
         id: plan
@@ -124,6 +125,7 @@ jobs:
         uses: granthouston44/terraform-actions/.github/actions/terraform-setup@main
         with:
           environment: ${{ inputs.environment }}
+          working_directory: ${{ inputs.working_directory }}
 
       - name: Terraform apply
         uses: granthouston44/terraform-actions/.github/actions/terraform-apply@main

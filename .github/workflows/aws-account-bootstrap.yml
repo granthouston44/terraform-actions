@@ -70,6 +70,7 @@ jobs:
         uses: granthouston44/terraform-actions/.github/actions/terraform-setup@main
         with:
           environment: ${{ inputs.environment }}
+          working_directory: ${{ inputs.working_directory }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

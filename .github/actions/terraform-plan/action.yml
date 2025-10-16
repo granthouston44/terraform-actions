@@ -29,11 +29,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Terraform init (backend)
-      shell: bash
-      working-directory: ${{ inputs.working_directory }}
-      run: terraform init -input=false -reconfigure -backend-config="env/${{ inputs.environment }}/${{ inputs.environment }}.tfbackend"
-
     - name: Terraform plan
       id: plan
       shell: bash
