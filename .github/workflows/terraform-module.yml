@@ -35,6 +35,7 @@ jobs:
   context:
     name: Run Context
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     outputs:
       effective_role_arn: ${{ steps.compute.outputs.effective_role_arn }}
     steps:
@@ -44,17 +45,10 @@ jobs:
         env:
           ENV: ${{ inputs.environment }}
           ROLE_BASE: ims-terraform-infrastructure-role
-          AWS_ACCOUNT_ID_SANDBOX: ${{ secrets.AWS_ACCOUNT_ID_SANDBOX }}
-          AWS_ACCOUNT_ID_DEV: ${{ secrets.AWS_ACCOUNT_ID_DEV }}
-          AWS_ACCOUNT_ID_PROD: ${{ secrets.AWS_ACCOUNT_ID_PROD }}
+          ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          case "$ENV" in
-            sandbox) ACCT="$AWS_ACCOUNT_ID_SANDBOX" ;;
-            dev)     ACCT="$AWS_ACCOUNT_ID_DEV" ;;
-            prod)    ACCT="$AWS_ACCOUNT_ID_PROD" ;;
-            *)       ACCT="" ;;
-          esac
+          ACCT="$ACCOUNT"
           ROLE_ARN=""
           if [ -n "${ACCT}" ]; then
             ROLE_ARN="arn:aws:iam::${ACCT}:role/${ROLE_BASE}-${ENV}"
@@ -78,41 +72,29 @@ jobs:
     name: Plan
     runs-on: ubuntu-latest
     needs: context
+    environment: ${{ inputs.environment }}
     outputs:
       changed: ${{ steps.plan.outputs.plan_status == 'changes' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Terraform setup (fmt/validate/tfsec)
-        uses: granthouston44/terraform-actions/.github/actions/terraform-setup@v0.2.1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          terraform_version: 1.8.5
-          working_directory: ${{ inputs.working_directory }}
-          run_local_init: false
-
       - name: Terraform plan
         id: plan
-        uses: granthouston44/terraform-actions/.github/actions/terraform-plan@v0.2.1
+        uses: granthouston44/terraform-actions/.github/actions/terraform-plan-apply@v0.2.2
         with:
           working_directory: ${{ inputs.working_directory }}
           backend_config_file: env/${{ inputs.environment }}.backend.hcl
           var_file: env/${{ inputs.environment }}.tfvars
           plan_file: plan-${{ inputs.environment }}.tfplan
-          additional_init_args: ''
-          additional_plan_args: ''
           aws_role_to_assume: ${{ needs.context.outputs.effective_role_arn }}
-          aws_region: eu-west-1
-          aws_session_name: github-actions
-          artifact_name: tfplan
+          run_plan: 'true'
+          use_detailed_exitcode: 'true'
+          emit_plan_json: 'true'
+          run_apply: 'false'
+          apply_auto_approve: 'false'
 
-      - name: PR comment with plan
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          recreate: true
-          path: ${{ steps.plan.outputs.plan_text_path }}
+      # PR comment step removed per request
 
   plan-approval:
     name: Plan Approval Gate
@@ -129,29 +111,21 @@ jobs:
     if: ${{ github.ref == 'refs/heads/main' && needs.plan.outputs.changed == 'true' }}
     runs-on: ubuntu-latest
     needs: [plan, plan-approval]
+    environment: ${{ inputs.environment }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Terraform setup (fmt/validate)
-        uses: granthouston44/terraform-actions/.github/actions/terraform-setup@v0.2.1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          terraform_version: 1.8.5
-          working_directory: ${{ inputs.working_directory }}
-          run_local_init: false
-
       - name: Terraform apply
-        uses: granthouston44/terraform-actions/.github/actions/terraform-apply@v0.2.1
+        uses: granthouston44/terraform-actions/.github/actions/terraform-plan-apply@v0.2.2
         with:
           working_directory: ${{ inputs.working_directory }}
           backend_config_file: env/${{ inputs.environment }}.backend.hcl
           var_file: env/${{ inputs.environment }}.tfvars
           plan_file: plan-${{ inputs.environment }}.tfplan
-          additional_init_args: ''
-          additional_apply_args: ''
-          apply_auto_approve: false
           aws_role_to_assume: ${{ needs.context.outputs.effective_role_arn }}
-          aws_region: eu-west-1
-          aws_session_name: github-actions
-          artifact_name: tfplan
+          run_plan: 'false'
+          use_detailed_exitcode: 'true'
+          emit_plan_json: 'false'
+          run_apply: 'true'
+          apply_auto_approve: 'false'
