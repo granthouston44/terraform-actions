@@ -21,24 +21,8 @@ inputs:
     description: Optional AWS account ID (used to compute a standard role ARN when aws_role_to_assume is empty).
     required: false
     default: ""
-  aws_region:
-    description: AWS region for credentials configuration.
-    required: false
-    default: "eu-west-1"
   backend_config_file:
     description: Optional path to a .tfbackend file. If provided, this takes precedence over computed config.
-    required: false
-    default: ""
-  backend_bucket_prefix:
-    description: Prefix for S3 backend bucket name; actual bucket is <prefix><environment> when computing config.
-    required: false
-    default: "ims-terraform-infrastructure-state-"
-  backend_lock_table_prefix:
-    description: Prefix for DynamoDB lock table name; actual table is <prefix><environment> when computing config.
-    required: false
-    default: "ims-terraform-infrastructure-state-lock-"
-  backend_key:
-    description: Optional state object key; if empty, defaults to ims-<repo>-<environment>.tfstate
     required: false
     default: ""
   
@@ -81,7 +65,7 @@ runs:
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ steps.role.outputs.role_arn }}
-        aws-region: ${{ inputs.aws_region }}
+        aws-region: eu-west-1
         role-session-name: github-actions
 
     - name: Terraform init
@@ -96,13 +80,10 @@ runs:
           terraform init -input=false -reconfigure -backend-config="env/${ENV_NAME}/${ENV_NAME}.tfbackend"
         else
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
-          KEY="${{ inputs.backend_key }}"
-          if [ -z "$KEY" ]; then
-            KEY="ims-${REPO_NAME}-${ENV_NAME}.tfstate"
-          fi
-          BUCKET="${{ inputs.backend_bucket_prefix }}${ENV_NAME}"
-          TABLE="${{ inputs.backend_lock_table_prefix }}${ENV_NAME}"
-          REGION="${{ inputs.aws_region }}"
+          KEY="ims-${REPO_NAME}-${ENV_NAME}.tfstate"
+          BUCKET="ims-terraform-infrastructure-state-${ENV_NAME}"
+          TABLE="ims-terraform-infrastructure-state-lock-${ENV_NAME}"
+          REGION="eu-west-1"
           terraform init -input=false -reconfigure \
             -backend-config="bucket=${BUCKET}" \
             -backend-config="key=${KEY}" \
