@@ -83,6 +83,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Configure AWS credentials
+        if: ${{ needs.context.outputs.effective_role_arn != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ needs.context.outputs.effective_role_arn }}
+          aws-region: eu-west-1
+          role-session-name: github-actions
+
       - name: Terraform setup
         uses: granthouston44/terraform-actions/.github/actions/terraform-setup@v1
 
@@ -118,6 +126,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        if: ${{ needs.context.outputs.effective_role_arn != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ needs.context.outputs.effective_role_arn }}
+          aws-region: eu-west-1
+          role-session-name: github-actions
 
       - name: Terraform setup
         uses: granthouston44/terraform-actions/.github/actions/terraform-setup@v1

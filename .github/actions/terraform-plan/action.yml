@@ -1,5 +1,5 @@
 name: Terraform Plan
-description: Compute standard backend/plan paths from environment, optionally assume AWS role, and run terraform plan with artifacts.
+description: Compute backend/plan paths from environment and run terraform plan with artifacts. Assumes AWS credentials configured by the caller.
 author: Tesco Terraform Tooling Team
 inputs:
   working_directory:
@@ -11,14 +11,6 @@ inputs:
     required: true
   var_file:
     description: Optional path to a tfvars file relative to working_directory.
-    required: false
-    default: ""
-  aws_role_to_assume:
-    description: Optional full AWS role ARN to assume.
-    required: false
-    default: ""
-  aws_account_id:
-    description: Optional AWS account ID (used to compute a standard role ARN when aws_role_to_assume is empty).
     required: false
     default: ""
   backend_config_file:
@@ -45,29 +37,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Compute role ARN
-      id: role
-      shell: bash
-      env:
-        IN_ROLE: ${{ inputs.aws_role_to_assume }}
-        IN_ACCT: ${{ inputs.aws_account_id }}
-        ENV_NAME: ${{ inputs.environment }}
-      run: |
-        set -euo pipefail
-        ROLE_ARN="${IN_ROLE}"
-        if [ -z "$ROLE_ARN" ] && [ -n "${IN_ACCT}" ]; then
-          ROLE_ARN="arn:aws:iam::${IN_ACCT}:role/ims-terraform-infrastructure-role-${ENV_NAME}"
-        fi
-        echo "role_arn=$ROLE_ARN" >> "$GITHUB_OUTPUT"
-
-    - name: Configure AWS credentials
-      if: ${{ steps.role.outputs.role_arn != '' }}
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ steps.role.outputs.role_arn }}
-        aws-region: eu-west-1
-        role-session-name: github-actions
-
     - name: Terraform init
       shell: bash
       working-directory: ${{ inputs.working_directory }}
