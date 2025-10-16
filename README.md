@@ -40,7 +40,7 @@ Notes:
 - Outputs `summary_path` and `report_path` can feed artifacts or downstream reporting steps.
 
 Backend template rendering (required)
-Place a template at `env/<env>/tfbackend.template` in your working directory. The `terraform-setup` action renders this to `env/<env>/<env>.tfbackend` before running `terraform init`. If `envsubst` is available, the template may reference environment variables; otherwise it will be copied verbatim.
+Place a template at `env/tfbackend.template` (or `env/<env>/tfbackend.template` for per-env overrides) in your working directory. The `terraform-setup` action renders this to `env/<env>/<env>.tfbackend` before running `terraform init`. If `envsubst` is available, the template may reference environment variables; otherwise it will be copied verbatim.
 
 ### `.github/actions/terraform-plan-apply`
 Removed in v1.0.0. Prefer composing `terraform-setup` → `terraform-plan` and `terraform-apply` in workflows with stage gates.
