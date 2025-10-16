@@ -68,6 +68,9 @@ jobs:
           var_file: env/${{ inputs.environment }}.tfvars
           plan_file: plan-${{ inputs.environment }}.tfplan
           terraform_version: 1.8.5
+          application: ${{ inputs.working_directory }}
+          action_type: plan
+          region: eu-west-1
   plan:
     name: Plan
     runs-on: ubuntu-latest
