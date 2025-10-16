@@ -55,6 +55,18 @@ inputs:
     description: Terratest timeout (if applicable)
     required: false
     default: ""
+  application:
+    description: Application or module name
+    required: false
+    default: ""
+  action_type:
+    description: Action type (e.g., plan, apply, bootstrap)
+    required: false
+    default: ""
+  region:
+    description: AWS region
+    required: false
+    default: "eu-west-1"
   notes:
     description: Additional free-form notes to include in the summary
     required: false
@@ -92,6 +104,9 @@ runs:
         HEAD_REF: ${{ github.head_ref }}
         BASE_REF: ${{ github.base_ref }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
+        APP: ${{ inputs.application }}
+        ACTION_TYPE: ${{ inputs.action_type }}
+        REGION: ${{ inputs.region }}
       run: |
         {
           echo "## ${TITLE}"
@@ -117,4 +132,18 @@ runs:
           if [ -n "${NOTES}" ]; then
             echo "- Notes: ${NOTES}"
           fi
+          echo
+          echo "----------------------------------------"
+          echo "Workflow Input Summary"
+          echo "----------------------------------------"
+          echo "Environment : ${ENVIRONMENT}"
+          echo "Application : ${APP}"
+          echo "Region      : ${REGION}"
+          echo "Action Type : ${ACTION_TYPE}"
+          echo "Triggered by: ${ACTOR}"
+          echo "Repository  : ${REPOSITORY}"
+          echo "Workflow    : ${WORKFLOW}"
+          echo "Run ID      : ${RUN_ID}"
+          echo "Run Number  : ${RUN_NUMBER}"
+          echo "----------------------------------------"
         } >> "$GITHUB_STEP_SUMMARY"

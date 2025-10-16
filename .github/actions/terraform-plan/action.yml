@@ -18,20 +18,12 @@ inputs:
     description: Output plan file path.
     required: false
     default: "terraform.tfplan"
-  additional_init_args:
-    description: Extra arguments appended to terraform init.
-    required: false
-    default: ""
-  additional_plan_args:
-    description: Additional arguments appended to terraform plan.
-    required: false
-    default: ""
   use_detailed_exitcode:
-    description: Use terraform plan -detailed-exitcode to capture change status.
+    description: (Deprecated) Always enabled internally.
     required: false
     default: "true"
   emit_plan_json:
-    description: Generate terraform show -json output alongside the human-readable plan summary.
+    description: (Deprecated) Always enabled internally.
     required: false
     default: "true"
   artifact_name:
@@ -42,14 +34,10 @@ inputs:
     description: Optional IAM role ARN to assume before running Terraform.
     required: false
     default: ""
-  aws_region:
-    description: AWS region used when assuming the role.
+  terraform_version:
+    description: Terraform CLI version to install.
     required: false
-    default: "eu-west-1"
-  aws_session_name:
-    description: Session name for STS assume-role calls.
-    required: false
-    default: "github-actions"
+    default: "1.8.5"
 outputs:
   plan_status:
     description: Result of terraform plan (changes, no_changes).
@@ -75,17 +63,12 @@ runs:
       with:
         working_directory: ${{ inputs.working_directory }}
         backend_config_file: ${{ inputs.backend_config_file }}
-        additional_init_args: ${{ inputs.additional_init_args }}
         run_plan: true
         plan_file: ${{ inputs.plan_file }}
         var_file: ${{ inputs.var_file }}
-        additional_plan_args: ${{ inputs.additional_plan_args }}
-        use_detailed_exitcode: ${{ inputs.use_detailed_exitcode }}
-        emit_plan_json: ${{ inputs.emit_plan_json }}
         run_apply: false
         aws_role_to_assume: ${{ inputs.aws_role_to_assume }}
-        aws_region: ${{ inputs.aws_region }}
-        aws_session_name: ${{ inputs.aws_session_name }}
+        terraform_version: ${{ inputs.terraform_version }}
 
     - name: Upload plan artifact
       if: ${{ steps.plan.outputs.plan_file != '' }}
@@ -97,4 +80,3 @@ runs:
           ${{ steps.plan.outputs.plan_text_path }}
           ${{ steps.plan.outputs.plan_json_path }}
         if-no-files-found: ignore
-

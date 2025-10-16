@@ -81,16 +81,13 @@ jobs:
 
       - name: Terraform plan
         id: plan
-        uses: granthouston44/terraform-actions/.github/actions/terraform-plan-apply@v0.3.2
+        uses: granthouston44/terraform-actions/.github/actions/terraform-plan@v0.3.2
         with:
           working_directory: ${{ inputs.working_directory }}
-          backend_config_file: env/${{ inputs.environment }}.backend.hcl
-          var_file: env/${{ inputs.environment }}.tfvars
+          backend_config_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfbackend
+          var_file: ''
           plan_file: plan-${{ inputs.environment }}.tfplan
           aws_role_to_assume: ${{ needs.context.outputs.effective_role_arn }}
-          run_plan: 'true'
-          run_apply: 'false'
-          apply_auto_approve: 'false'
 
       # PR comment step removed per request
 
@@ -115,13 +112,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Terraform apply
-        uses: granthouston44/terraform-actions/.github/actions/terraform-plan-apply@v0.3.2
+        uses: granthouston44/terraform-actions/.github/actions/terraform-apply@v0.3.2
         with:
           working_directory: ${{ inputs.working_directory }}
-          backend_config_file: env/${{ inputs.environment }}.backend.hcl
-          var_file: env/${{ inputs.environment }}.tfvars
+          backend_config_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfbackend
+          var_file: ''
           plan_file: plan-${{ inputs.environment }}.tfplan
           aws_role_to_assume: ${{ needs.context.outputs.effective_role_arn }}
-          run_plan: 'false'
-          run_apply: 'true'
           apply_auto_approve: 'false'
