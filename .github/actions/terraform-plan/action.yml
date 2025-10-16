@@ -34,21 +34,15 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working_directory }}
       run: |
-        set -euo pipefail
         ENV_NAME="${{ inputs.environment }}"
         PLAN_FILE="plan-${ENV_NAME}.tfplan"
-        PLAN_ARGS=("-input=false" "-no-color" "-detailed-exitcode" "-out=$PLAN_FILE" "-var-file=env/${ENV_NAME}/${ENV_NAME}.tfvars")
         set +e
-        terraform plan "${PLAN_ARGS[@]}"
-        EXIT_CODE=$?
-        set -e
-        case $EXIT_CODE in
-          0) PLAN_STATUS="no_changes" ;;
-          2) PLAN_STATUS="changes" ;;
-          *) echo "terraform plan failed with exit code $EXIT_CODE" >&2; exit "$EXIT_CODE" ;;
-        esac
-        echo "plan_status=$PLAN_STATUS" >> "$GITHUB_OUTPUT"
-        echo "plan_exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+        terraform plan -input=false -no-color -detailed-exitcode -out="$PLAN_FILE" -var-file="env/${ENV_NAME}/${ENV_NAME}.tfvars"
+        ec=$?
+        [ $ec -gt 1 ] && exit $ec
+        status=$([ $ec -eq 2 ] && echo changes || echo no_changes)
+        echo "plan_status=$status" >> "$GITHUB_OUTPUT"
+        echo "plan_exit_code=$ec" >> "$GITHUB_OUTPUT"
         echo "plan_file=$(pwd)/$PLAN_FILE" >> "$GITHUB_OUTPUT"
 
     - name: Capture plan outputs
