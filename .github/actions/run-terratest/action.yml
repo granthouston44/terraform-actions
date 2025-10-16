@@ -6,6 +6,10 @@ inputs:
     description: Go toolchain version to install.
     required: false
     default: "1.23.6"
+  working_directory:
+    description: Directory containing Terratest sources (with go.mod).
+    required: false
+    default: "test"
   terraform_version:
     description: Terraform CLI version to install.
     required: false
@@ -53,6 +57,7 @@ runs:
 
     - name: Go toolchain info
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
       run: |
         go version
         go env GOROOT
@@ -72,6 +77,7 @@ runs:
     - name: Run Terratest suite
       id: terratest
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
       env:
         TEST_PATTERN: ${{ inputs.test_pattern }}
         TEST_TIMEOUT: ${{ inputs.timeout }}
@@ -106,6 +112,7 @@ runs:
     - name: Publish test summary
       if: ${{ always() }}
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
       env:
         TEST_PATTERN: ${{ inputs.test_pattern }}
       run: |
@@ -132,6 +139,7 @@ runs:
       if: ${{ always() }}
       id: set-outputs
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
       run: |
         SUMMARY_FILE=go-test-summary.txt
         REPORT_FILE=go-test-report.json

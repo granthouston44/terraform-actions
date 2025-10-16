@@ -75,9 +75,6 @@ jobs:
     name: Run Terratest
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-    defaults:
-      run:
-        working-directory: ${{ inputs.working_directory }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -100,6 +97,7 @@ jobs:
         with:
           go_version: ${{ inputs.go_version }}
           terraform_version: ${{ inputs.terraform_version }}
+          working_directory: ${{ inputs.working_directory }}
           test_pattern: ${{ inputs.test_pattern }}
           timeout: ${{ inputs.timeout }}
           aws_role_to_assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ims-terraform-infrastructure-role-${{ inputs.environment }}
