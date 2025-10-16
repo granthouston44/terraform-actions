@@ -42,6 +42,9 @@ runs:
         go-version: ${{ inputs.go_version }}
         cache: true
 
+    - name: Install OpenTofu CLI
+      uses: opentofu/setup-opentofu@v1
+
     - name: Go toolchain info
       shell: bash
       run: |
@@ -107,7 +110,14 @@ runs:
           fi
           {
             echo "### Terratest results ($LABEL)"
-            cat "$SUMMARY_FILE"
+            echo ""
+            echo "<details><summary>View raw test output</summary>"
+            echo ""
+            echo '<pre>'
+            sed -e 's/^::group:://g' -e 's/^::endgroup::$//g' "$SUMMARY_FILE"
+            echo '</pre>'
+            echo ""
+            echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
         fi
 
