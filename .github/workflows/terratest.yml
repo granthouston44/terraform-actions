@@ -46,34 +46,10 @@ on:
         description: Go test timeout value.
         required: false
         default: "20m"
-      aws_role_to_assume:
-        description: Optional IAM role ARN used by tests.
-        required: false
-        default: ""
-      aws_account_id:
-        description: Optional AWS account ID. If provided and aws_role_to_assume is empty, a role ARN will be constructed.
-        required: false
-        default: ""
-      role_name:
-        description: Base role name used when constructing the role ARN from aws_account_id; environment will be appended as a suffix.
-        required: false
-        default: "ims-terraform-infrastructure-role"
       environment:
-        description: Environment suffix for role name and display context.
+        description: Environment name used to resolve AWS account and role.
         required: false
         default: "sandbox"
-      aws_region:
-        description: AWS region for assumed role.
-        required: false
-        default: "eu-west-1"
-      aws_session_name:
-        description: Session name for STS assume-role calls.
-        required: false
-        default: "github-actions"
-      formatter:
-        description: "Output formatter to use: 'gotestfmt' or 'gotestsum'."
-        required: false
-        default: "gotestsum"
 
 permissions:
   contents: read
