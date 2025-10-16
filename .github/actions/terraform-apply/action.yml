@@ -18,17 +18,6 @@ runs:
         name: tfplan
         path: ${{ inputs.working_directory }}
 
-    - name: Compute backend and plan paths
-      id: paths
-      shell: bash
-      env:
-        ENV: ${{ inputs.environment }}
-      run: |
-        set -euo pipefail
-        PLAN_FILE="plan-${ENV}.tfplan"
-        echo "plan_file=$PLAN_FILE" >> "$GITHUB_OUTPUT"
-        echo "backend_config_file=env/${ENV}/${ENV}.tfbackend" >> "$GITHUB_OUTPUT"
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -39,11 +28,11 @@ runs:
     - name: Terraform apply
       shell: bash
       working-directory: ${{ inputs.working_directory }}
-      env:
-        BACKEND_CONFIG_FILE: ${{ steps.paths.outputs.backend_config_file }}
-        PLAN_FILE: ${{ steps.paths.outputs.plan_file }}
       run: |
         set -euo pipefail
+        ENV_NAME="${{ inputs.environment }}"
+        BACKEND_CONFIG_FILE="env/${ENV_NAME}/${ENV_NAME}.tfbackend"
+        PLAN_FILE="plan-${ENV_NAME}.tfplan"
         terraform init -input=false -reconfigure -backend-config="$BACKEND_CONFIG_FILE"
         APPLY_ARGS=("-input=false" "$PLAN_FILE")
         echo "Running: terraform apply ${APPLY_ARGS[*]}"
