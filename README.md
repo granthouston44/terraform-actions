@@ -21,12 +21,13 @@ Key inputs:
 - `terraform_version` – optional; version of Terraform CLI to install (default: 1.8.5).
 
 ### `.github/actions/run-terratest`
-Install the Go toolchain, optionally assume an AWS role, and execute Terratest suites using gotestsum with a concise summary.
+Install the Go toolchain and Terraform CLI, optionally assume an AWS role, and execute Terratest suites using gotestsum with a concise summary.
 
 ```yaml
 - uses: org/terraform-actions/.github/actions/run-terratest@v1
   with:
     go_version: 1.23.6
+    terraform_version: 1.8.5
     test_pattern: all # or a regex like TestRoute53Module_BasicRecords
     timeout: 20m
     aws_role_to_assume: ${{ secrets.AWS_SANDBOX_ROLE }} # optional
@@ -35,7 +36,7 @@ Install the Go toolchain, optionally assume an AWS role, and execute Terratest s
 
 Notes:
 - Runs in the job's working directory. Set `defaults.run.working-directory` to your `test` folder if needed.
-- Uses `gotestsum` by default; no Terraform setup, fmt, validate, or tfsec here.
+- Uses `gotestsum` by default; no fmt/validate/tfsec here (covered by `terraform-setup` in deploy workflows).
 - Outputs `summary_path` and `report_path` can feed artifacts or downstream reporting steps.
 
 ### `.github/actions/terraform-plan-apply`

@@ -6,6 +6,10 @@ inputs:
     description: Go toolchain version to install.
     required: false
     default: "1.23.6"
+  terraform_version:
+    description: Terraform CLI version to install.
+    required: false
+    default: "1.8.5"
   test_pattern:
     description: Specific test name (regex) to run. Use 'all' for the entire suite.
     required: false
@@ -42,8 +46,10 @@ runs:
         go-version: ${{ inputs.go_version }}
         cache: true
 
-    - name: Install OpenTofu CLI
-      uses: opentofu/setup-opentofu@v1
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
 
     - name: Go toolchain info
       shell: bash
@@ -69,6 +75,7 @@ runs:
       env:
         TEST_PATTERN: ${{ inputs.test_pattern }}
         TEST_TIMEOUT: ${{ inputs.timeout }}
+        TERRAFORM_BINARY: terraform
       run: |
         set -o pipefail
         SUMMARY_FILE=go-test-summary.txt
