@@ -64,8 +64,8 @@ jobs:
           aws_account_id: ${{ steps.compute.outputs.account_id }}
           aws_role_arn: ${{ steps.compute.outputs.effective_role_arn }}
           working_directory: ${{ inputs.working_directory }}
-          backend_config_file: env/${{ inputs.environment }}.backend.hcl
-          var_file: env/${{ inputs.environment }}.tfvars
+          backend_config_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfbackend
+          var_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfvars
           plan_file: plan-${{ inputs.environment }}.tfplan
           terraform_version: 1.8.5
           notes: "Reusable Terraform Module Workflow"
@@ -92,6 +92,7 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
           aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
+          var_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfvars
 
       # PR comment step removed per request
 

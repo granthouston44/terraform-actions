@@ -9,6 +9,10 @@ inputs:
   environment:
     description: Environment name (sandbox/dev/prod) used to derive backend/plan paths and role
     required: true
+  var_file:
+    description: Optional path to a tfvars file relative to working_directory.
+    required: false
+    default: ""
   aws_role_to_assume:
     description: Optional full AWS role ARN to assume.
     required: false
@@ -80,8 +84,16 @@ runs:
         set -euo pipefail
         ENV_NAME="${{ inputs.environment }}"
         PLAN_FILE="plan-${ENV_NAME}.tfplan"
+        PLAN_ARGS=("-input=false" "-no-color" "-detailed-exitcode" "-out=$PLAN_FILE")
+        if [ -n "${{ inputs.var_file }}" ]; then
+          if [ -f "${{ inputs.var_file }}" ]; then
+            PLAN_ARGS+=("-var-file=${{ inputs.var_file }}")
+          else
+            echo "Warning: var_file path '${{ inputs.var_file }}' not found; continuing without it" >&2
+          fi
+        fi
         set +e
-        terraform plan -input=false -no-color -detailed-exitcode -out="$PLAN_FILE"
+        terraform plan "${PLAN_ARGS[@]}"
         EXIT_CODE=$?
         set -e
         case $EXIT_CODE in
