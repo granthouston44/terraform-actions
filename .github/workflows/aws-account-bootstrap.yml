@@ -45,6 +45,9 @@ jobs:
     name: Bootstrap ${{ inputs.environment }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,8 +65,16 @@ jobs:
           plan_file: plan-${{ inputs.environment }}.tfplan
           terraform_version: 1.8.5
 
-      - name: Terraform plan + apply (one-and-done)
-        uses: granthouston44/terraform-actions/.github/actions/terraform-plan-apply@v0.4.2
+      - name: Terraform setup
+        uses: granthouston44/terraform-actions/.github/actions/terraform-setup@v1
+
+      - name: Terraform plan
+        uses: granthouston44/terraform-actions/.github/actions/terraform-plan@v1
         with:
           environment: ${{ inputs.environment }}
-          action_type: plan_apply
+
+      - name: Terraform apply (optional)
+        if: ${{ inputs.apply_auto_approve == true }}
+        uses: granthouston44/terraform-actions/.github/actions/terraform-apply@v1
+        with:
+          environment: ${{ inputs.environment }}
