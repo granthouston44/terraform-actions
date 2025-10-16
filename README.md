@@ -56,6 +56,7 @@ Outputs include `plan_status`, `plan_exit_code`, and paths to the rendered plan 
 
 ### `.github/actions/terraform-plan`
 A thin wrapper around the plan portion of `terraform-plan-apply` that also uploads the plan artifacts for cross-job reuse.
+Note: Assumes Terraform is already installed (run `terraform-setup` earlier in the job).
 
 ```yaml
 - uses: org/terraform-actions/.github/actions/terraform-plan@v0
@@ -69,6 +70,7 @@ A thin wrapper around the plan portion of `terraform-plan-apply` that also uploa
 
 ### `.github/actions/terraform-apply`
 Downloads a previously uploaded plan artifact and performs an apply, delegating to `terraform-plan-apply` under the hood.
+Note: Assumes Terraform is already installed (run `terraform-setup` earlier in the job).
 
 ```yaml
 - uses: org/terraform-actions/.github/actions/terraform-apply@v0

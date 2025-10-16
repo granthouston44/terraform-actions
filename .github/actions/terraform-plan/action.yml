@@ -29,11 +29,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Set up Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: 1.8.5
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:

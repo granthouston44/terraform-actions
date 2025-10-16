@@ -9,10 +9,6 @@ inputs:
   environment:
     description: Environment name (sandbox/dev/prod) used to derive backend path and role
     required: true
-  terraform_version:
-    description: Terraform CLI version to install.
-    required: false
-    default: "1.8.5"
 runs:
   using: composite
   steps:
@@ -32,11 +28,6 @@ runs:
         PLAN_FILE="plan-${ENV}.tfplan"
         echo "plan_file=$PLAN_FILE" >> "$GITHUB_OUTPUT"
         echo "backend_config_file=env/${ENV}/${ENV}.tfbackend" >> "$GITHUB_OUTPUT"
-
-    - name: Set up Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: ${{ inputs.terraform_version }}
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
