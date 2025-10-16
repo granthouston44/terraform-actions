@@ -1,5 +1,5 @@
 name: Terraform Apply
-description: Download plan artifact, compute standard backend path from environment, assume role via env-scoped vars, and run terraform apply.
+description: Download plan artifact, compute standard backend path from environment, optionally assume AWS role, and run terraform apply.
 author: Tesco Terraform Tooling Team
 inputs:
   working_directory:
@@ -9,6 +9,18 @@ inputs:
   environment:
     description: Environment name (sandbox/dev/prod) used to derive backend path and role
     required: true
+  aws_role_to_assume:
+    description: Optional full AWS role ARN to assume.
+    required: false
+    default: ""
+  aws_account_id:
+    description: Optional AWS account ID (used to compute a standard role ARN when aws_role_to_assume is empty).
+    required: false
+    default: ""
+  aws_region:
+    description: AWS region for credentials configuration.
+    required: false
+    default: "eu-west-1"
 runs:
   using: composite
   steps:
@@ -18,11 +30,27 @@ runs:
         name: tfplan
         path: ${{ inputs.working_directory }}
 
+    - name: Compute role ARN
+      id: role
+      shell: bash
+      env:
+        IN_ROLE: ${{ inputs.aws_role_to_assume }}
+        IN_ACCT: ${{ inputs.aws_account_id }}
+        ENV_NAME: ${{ inputs.environment }}
+      run: |
+        set -euo pipefail
+        ROLE_ARN="${IN_ROLE}"
+        if [ -z "$ROLE_ARN" ] && [ -n "${IN_ACCT}" ]; then
+          ROLE_ARN="arn:aws:iam::${IN_ACCT}:role/ims-terraform-infrastructure-role-${ENV_NAME}"
+        fi
+        echo "role_arn=$ROLE_ARN" >> "$GITHUB_OUTPUT"
+
     - name: Configure AWS credentials
+      if: ${{ steps.role.outputs.role_arn != '' }}
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ims-terraform-infrastructure-role-${{ inputs.environment }}
-        aws-region: eu-west-1
+        role-to-assume: ${{ steps.role.outputs.role_arn }}
+        aws-region: ${{ inputs.aws_region }}
         role-session-name: github-actions
 
     - name: Terraform apply
