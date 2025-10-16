@@ -63,16 +63,13 @@ jobs:
           terraform_version: 1.8.5
 
       - name: Terraform plan + apply (one-and-done)
-        uses: granthouston44/terraform-actions/.github/actions/terraform-plan-apply@v0.2.2
+        uses: granthouston44/terraform-actions/.github/actions/terraform-plan-apply@v0.3.2
         with:
           working_directory: ${{ inputs.working_directory }}
           backend_config_file: env/${{ inputs.environment }}.backend.hcl
           var_file: env/${{ inputs.environment }}.tfvars
           plan_file: plan-${{ inputs.environment }}.tfplan
           run_plan: 'true'
-          use_detailed_exitcode: 'true'
-          emit_plan_json: 'true'
           run_apply: 'true'
           apply_auto_approve: ${{ inputs.apply_auto_approve }}
           aws_role_to_assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ims-terraform-infrastructure-role-${{ inputs.environment }}
-
