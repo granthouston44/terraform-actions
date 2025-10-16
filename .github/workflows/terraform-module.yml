@@ -105,8 +105,8 @@ jobs:
         id: plan
         uses: granthouston44/terraform-actions/.github/actions/terraform-plan@v1
         with:
+          working_directory: ${{ inputs.working_directory }}
           environment: ${{ inputs.environment }}
-          var_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfvars
 
       # PR comment step removed per request
 
@@ -154,4 +154,5 @@ jobs:
       - name: Terraform apply
         uses: granthouston44/terraform-actions/.github/actions/terraform-apply@v1
         with:
+          working_directory: ${{ inputs.working_directory }}
           environment: ${{ inputs.environment }}

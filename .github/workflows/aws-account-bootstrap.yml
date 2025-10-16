@@ -81,12 +81,14 @@ jobs:
       - name: Terraform plan
         uses: granthouston44/terraform-actions/.github/actions/terraform-plan@v1
         with:
+          working_directory: ${{ inputs.working_directory }}
           environment: ${{ inputs.environment }}
-          var_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfvars
+          
 
       - name: Terraform apply (optional)
         if: ${{ inputs.apply_auto_approve == true }}
         uses: granthouston44/terraform-actions/.github/actions/terraform-apply@v1
         with:
+          working_directory: ${{ inputs.working_directory }}
           environment: ${{ inputs.environment }}
           aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
