@@ -9,7 +9,7 @@ Bootstrap Terraform repositories: configure private module access, install Terra
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: org/terraform-actions/.github/actions/terraform-setup@v0
+- uses: org/terraform-actions/.github/actions/terraform-setup@v1
   with:
     terraform_version: 1.8.5 # optional; defaults to 1.8.5
 ```
@@ -24,7 +24,7 @@ Key inputs:
 Install the Go toolchain, optionally assume an AWS role, and execute Terratest suites using gotestsum with a concise summary.
 
 ```yaml
-- uses: org/terraform-actions/.github/actions/run-terratest@v0
+- uses: org/terraform-actions/.github/actions/run-terratest@v1
   with:
     go_version: 1.23.6
     test_pattern: all # or a regex like TestRoute53Module_BasicRecords
@@ -39,13 +39,13 @@ Notes:
 - Outputs `summary_path` and `report_path` can feed artifacts or downstream reporting steps.
 
 ### `.github/actions/terraform-plan-apply`
-Deprecated: Prefer composing `terraform-setup` → `terraform-plan` and `terraform-apply` in workflows with stage gates.
+Removed in v1.0.0. Prefer composing `terraform-setup` → `terraform-plan` and `terraform-apply` in workflows with stage gates.
 
 ### `.github/actions/terraform-plan`
 Run terraform plan for a given environment and upload plan artifacts for cross-job reuse.
 
 ```yaml
-- uses: org/terraform-actions/.github/actions/terraform-plan@v0
+- uses: org/terraform-actions/.github/actions/terraform-plan@v1
   with:
     environment: sandbox
 ```
@@ -55,7 +55,7 @@ Note: Ensure Terraform is installed first (use `terraform-setup`).
 Download the previously uploaded plan artifact and apply it for a given environment.
 
 ```yaml
-- uses: org/terraform-actions/.github/actions/terraform-apply@v0
+- uses: org/terraform-actions/.github/actions/terraform-apply@v1
   with:
     environment: sandbox
 ```
@@ -66,9 +66,23 @@ Note: Ensure Terraform is installed first (use `terraform-setup`).
 ### `.github/workflows/terraform-module.yml`
 Recommended pattern: stage-gated workflows that compose `terraform-setup` → `terraform-plan` (artifact) → `terraform-apply`.
 
+## Migration Guide
+
+v1.0.0 (breaking changes):
+- Removed `terraform-plan-apply` composite; use `terraform-setup` → `terraform-plan` → `terraform-apply`.
+- `terraform-setup` simplified: always runs fmt/validate/tfsec; removed token/WD/toggles; relies on job working directory.
+- `terraform-plan` and `terraform-apply` now assume Terraform is installed (run `terraform-setup` first); trimmed inputs.
+- `run-terratest` simplified: standardized on `gotestsum`; removed Terraform setup and `working_directory` input; relies on job working directory.
+
+Consumer updates:
+- Update action refs from `@v0` to `@v1`.
+- Replace usages of `terraform-plan-apply` with separate plan/apply steps.
+- Insert `terraform-setup@v1` before plan/apply to install Terraform and run fmt/validate/tfsec.
+- Set `defaults.run.working-directory` for infra/test paths instead of passing WD inputs.
+
 ## Versioning
 
-Tag git releases (for example `v0.1.0`) and reference them from consumer workflows with the corresponding ref. Each release should include a changelog entry summarising behaviour changes.
+Adopts semantic versioning with major tags (`v1`). Reference actions as `@v1` for stable major, or `@v1.0.0` for a fixed patch release.
 
 ## Roadmap
 
