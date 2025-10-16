@@ -31,8 +31,6 @@ runs:
         PLAN_FILE="plan-${ENV_NAME}.tfplan"
         if [ -n "${{ inputs.backend_config_file }}" ]; then
           terraform init -input=false -reconfigure -backend-config="${{ inputs.backend_config_file }}"
-        elif [ -f "env/${ENV_NAME}/${ENV_NAME}.tfbackend" ]; then
-          terraform init -input=false -reconfigure -backend-config="env/${ENV_NAME}/${ENV_NAME}.tfbackend"
         else
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
           KEY="ims-${REPO_NAME}-${ENV_NAME}.tfstate"

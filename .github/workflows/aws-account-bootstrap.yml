@@ -60,7 +60,7 @@ jobs:
           aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
           aws_role_arn: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ims-terraform-infrastructure-role-${{ inputs.environment }}
           working_directory: ${{ inputs.working_directory }}
-          backend_config_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfbackend
+          backend_config_file: computed (ims-terraform-infrastructure-state-<env>, ims-<repo>-<env>.tfstate)
           var_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfvars
           plan_file: plan-${{ inputs.environment }}.tfplan
           terraform_version: 1.8.5
