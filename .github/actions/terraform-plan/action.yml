@@ -9,14 +9,7 @@ inputs:
   environment:
     description: Environment name (sandbox/dev/prod) used to derive backend/plan paths and role
     required: true
-  artifact_name:
-    description: Name for the uploaded plan artifact.
-    required: false
-    default: "tfplan"
-  terraform_version:
-    description: Terraform CLI version to install.
-    required: false
-    default: "1.8.5"
+  
 outputs:
   plan_status:
     description: Result of terraform plan (changes, no_changes).
@@ -36,20 +29,10 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Compute backend and plan paths
-      id: paths
-      shell: bash
-      env:
-        ENV: ${{ inputs.environment }}
-      run: |
-        set -euo pipefail
-        echo "backend_config_file=env/${ENV}/${ENV}.tfbackend" >> "$GITHUB_OUTPUT"
-        echo "plan_file=plan-${ENV}.tfplan" >> "$GITHUB_OUTPUT"
-
     - name: Set up Terraform
       uses: hashicorp/setup-terraform@v3
       with:
-        terraform_version: ${{ inputs.terraform_version }}
+        terraform_version: 1.8.5
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -61,20 +44,19 @@ runs:
     - name: Terraform init
       shell: bash
       working-directory: ${{ inputs.working_directory }}
-      env:
-        BACKEND_CONFIG_FILE: ${{ steps.paths.outputs.backend_config_file }}
       run: |
         set -euo pipefail
-        terraform init -input=false -reconfigure -backend-config="$BACKEND_CONFIG_FILE"
+        ENV_NAME="${{ inputs.environment }}"
+        terraform init -input=false -reconfigure -backend-config="env/${ENV_NAME}/${ENV_NAME}.tfbackend"
 
     - name: Terraform plan
       id: plan
       shell: bash
       working-directory: ${{ inputs.working_directory }}
-      env:
-        PLAN_FILE: ${{ steps.paths.outputs.plan_file }}
       run: |
         set -euo pipefail
+        ENV_NAME="${{ inputs.environment }}"
+        PLAN_FILE="plan-${ENV_NAME}.tfplan"
         set +e
         terraform plan -input=false -no-color -detailed-exitcode -out="$PLAN_FILE"
         EXIT_CODE=$?
@@ -93,10 +75,10 @@ runs:
       if: ${{ success() }}
       shell: bash
       working-directory: ${{ inputs.working_directory }}
-      env:
-        PLAN_FILE: ${{ steps.paths.outputs.plan_file }}
       run: |
         set -euo pipefail
+        ENV_NAME="${{ inputs.environment }}"
+        PLAN_FILE="plan-${ENV_NAME}.tfplan"
         terraform show -no-color "$PLAN_FILE" > plan.txt
         terraform show -json "$PLAN_FILE" > plan.json
         echo "plan_text_path=$(pwd)/plan.txt" >> "$GITHUB_OUTPUT"
@@ -106,7 +88,7 @@ runs:
       if: ${{ steps.plan.outputs.plan_file != '' }}
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ inputs.artifact_name }}
+        name: tfplan
         path: |
           ${{ steps.plan.outputs.plan_file }}
           ${{ steps.capture.outputs.plan_text_path }}

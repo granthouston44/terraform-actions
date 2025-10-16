@@ -1,43 +1,15 @@
 name: Terraform Plan and Apply
-description: Delegate to individual plan/apply composites and compute standard backend/plan paths from environment.
+description: Delegate to individual plan/apply composites; compute standard backend/plan paths from environment.
 author: Tesco Terraform Tooling Team
 
 inputs:
-  working_directory:
-    description: Directory containing Terraform configuration.
-    required: false
-    default: "."
   environment:
     description: Environment name (sandbox/dev/prod) used to derive backend/plan paths
     required: true
-  run_plan:
-    description: Execute terraform plan.
+  action_type:
+    description: Which action to perform: plan, apply, or plan_apply
     required: false
-    default: "true"
-  plan_file:
-    description: Optional plan file name. Defaults to plan-<env>.tfplan
-    required: false
-    default: ""
-  var_file:
-    description: Optional tfvars file. If empty, none is passed.
-    required: false
-    default: ""
-  run_apply:
-    description: Execute terraform apply after plan.
-    required: false
-    default: "false"
-  apply_auto_approve:
-    description: Use -auto-approve when running terraform apply.
-    required: false
-    default: "false"
-  aws_role_to_assume:
-    description: Optional IAM role ARN to assume before running Terraform.
-    required: false
-    default: ""
-  terraform_version:
-    description: Terraform CLI version to install.
-    required: false
-    default: "1.8.5"
+    default: "plan"
 
 outputs:
   plan_status:
@@ -59,42 +31,15 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Compute backend and plan paths
-      id: paths
-      shell: bash
-      env:
-        ENV: ${{ inputs.environment }}
-        IN_PLAN: ${{ inputs.plan_file }}
-      run: |
-        set -euo pipefail
-        PLAN_FILE="$IN_PLAN"
-        if [ -z "$PLAN_FILE" ]; then
-          PLAN_FILE="plan-${ENV}.tfplan"
-        fi
-        echo "plan_file=$PLAN_FILE" >> "$GITHUB_OUTPUT"
-        echo "backend_config_file=env/${ENV}/${ENV}.tfbackend" >> "$GITHUB_OUTPUT"
-
     - name: Terraform plan (composite)
       id: plan_wrap
-      if: ${{ inputs.run_plan == 'true' }}
+      if: ${{ inputs.action_type != 'apply' }}
       uses: ./.github/actions/terraform-plan
       with:
-        working_directory: ${{ inputs.working_directory }}
-        backend_config_file: ${{ steps.paths.outputs.backend_config_file }}
-        var_file: ${{ inputs.var_file }}
-        plan_file: ${{ steps.paths.outputs.plan_file }}
-        aws_role_to_assume: ${{ inputs.aws_role_to_assume }}
-        terraform_version: ${{ inputs.terraform_version }}
+        environment: ${{ inputs.environment }}
 
     - name: Terraform apply (composite)
-      if: ${{ inputs.run_apply == 'true' }}
+      if: ${{ inputs.action_type != 'plan' }}
       uses: ./.github/actions/terraform-apply
       with:
-        working_directory: ${{ inputs.working_directory }}
-        backend_config_file: ${{ steps.paths.outputs.backend_config_file }}
-        var_file: ${{ inputs.var_file }}
-        plan_file: ${{ steps.paths.outputs.plan_file }}
-        apply_auto_approve: ${{ inputs.apply_auto_approve }}
-        aws_role_to_assume: ${{ inputs.aws_role_to_assume }}
-        terraform_version: ${{ inputs.terraform_version }}
-
+        environment: ${{ inputs.environment }}
