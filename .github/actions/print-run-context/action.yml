@@ -115,6 +115,8 @@ runs:
           echo "- Trigger: ${EVENT_NAME}"
           echo "- Actor: ${ACTOR} (triggering: ${TRIGGERING_ACTOR})"
           echo "- Ref: ${REF}"
+          echo "- Action: ${ACTION_TYPE:-n/a}"
+          [ -n "${APP}" ] && echo "- Application: ${APP}"
           if [ "${EVENT_NAME}" = "pull_request" ] && [ -n "${PR_NUMBER}" ]; then
             echo "- PR: #${PR_NUMBER} from ${HEAD_REF} into ${BASE_REF}"
           fi
