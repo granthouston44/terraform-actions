@@ -11,6 +11,11 @@ on:
         description: Environment name used for backend/vars, approvals and role resolution.
         required: true
         type: string
+      action:
+        description: Which action to perform (plan or apply)
+        required: false
+        type: string
+        default: apply
   workflow_dispatch:
     inputs:
       working_directory:
@@ -21,6 +26,14 @@ on:
         description: Environment name (drives backend/vars/plan/approval/role)
         required: true
         default: "prod"
+      action:
+        description: Which action to perform (plan or apply)
+        required: true
+        default: apply
+        type: choice
+        options:
+          - plan
+          - apply
 
 permissions:
   contents: read
@@ -87,7 +100,7 @@ jobs:
 
   plan-approval:
     name: Plan Approval Gate
-    if: ${{ github.ref_name == 'main' }}
+    if: ${{ github.ref_name == 'main' && inputs.action == 'apply' }}
     runs-on: ubuntu-latest
     needs: [plan]
     environment: ${{ format('{0}-deploy', inputs.environment) }}
@@ -97,7 +110,7 @@ jobs:
 
   apply:
     name: Apply
-    if: ${{ github.ref_name == 'main' }}
+    if: ${{ github.ref_name == 'main' && inputs.action == 'apply' }}
     runs-on: ubuntu-latest
     needs: [plan, plan-approval]
     environment: ${{ inputs.environment }}
