@@ -90,10 +90,10 @@ jobs:
     if: ${{ github.ref_name == 'main' }}
     runs-on: ubuntu-latest
     needs: [plan]
-    environment: ${{ inputs.environment }}
+    environment: ${{ format('{0}-deploy', inputs.environment) }}
     steps:
       - name: Await environment approval
-        run: echo "Environment approval granted for plan in ${{ inputs.environment }}"
+        run: echo "Awaiting approval in environment '${{ format('{0}-deploy', inputs.environment) }}'"
 
   apply:
     name: Apply
