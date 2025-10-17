@@ -76,6 +76,7 @@ jobs:
           var_file: env/${{ inputs.environment }}/${{ inputs.environment }}.tfvars
           plan_file: plan-${{ inputs.environment }}.tfplan
           terraform_version: 1.8.5
+          action_type: ${{ inputs.action }}
           notes: "Reusable Terraform Module Workflow"
 
       - name: Configure AWS credentials
