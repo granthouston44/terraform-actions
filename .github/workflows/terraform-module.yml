@@ -87,7 +87,7 @@ jobs:
 
   plan-approval:
     name: Plan Approval Gate
-    if: ${{ github.ref_name == 'main' && fromJSON(needs.plan.outputs.changed) }}
+    if: ${{ github.ref_name == 'main' }}
     runs-on: ubuntu-latest
     needs: [plan]
     environment: ${{ inputs.environment }}
@@ -97,7 +97,7 @@ jobs:
 
   apply:
     name: Apply
-    if: ${{ github.ref_name == 'main' && fromJSON(needs.plan.outputs.changed) }}
+    if: ${{ github.ref_name == 'main' }}
     runs-on: ubuntu-latest
     needs: [plan, plan-approval]
     environment: ${{ inputs.environment }}
