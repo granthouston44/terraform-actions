@@ -120,30 +120,25 @@ runs:
           fi
           if [ -n "${ENVIRONMENT}${AWS_ACCOUNT_ID}${AWS_ROLE_ARN}" ]; then
             echo "- Environment: ${ENVIRONMENT}"
-            echo "- AWS account id: ${AWS_ACCOUNT_ID}"
-            echo "- AWS role ARN: ${AWS_ROLE_ARN}"
+            [ -n "${AWS_ACCOUNT_ID}" ] && echo "- AWS account id: ${AWS_ACCOUNT_ID}"
+            [ -n "${AWS_ROLE_ARN}" ] && echo "- AWS role ARN: ${AWS_ROLE_ARN}"
           fi
-          if [ -n "${WORKDIR}${BACKEND}${VAR_FILE}${PLAN_FILE}${TF_VERSION}" ]; then
-            echo "- Terraform: dir=${WORKDIR} backend=${BACKEND} var_file=${VAR_FILE} plan_file=${PLAN_FILE} version=${TF_VERSION}"
+          if [ -n "${WORKDIR}" ]; then
+            echo "- Working dir: ${WORKDIR}"
+          fi
+          if [ -n "${TF_VERSION}${BACKEND}${VAR_FILE}${PLAN_FILE}" ]; then
+            echo "- Terraform: version=${TF_VERSION:-n/a}"
+            [ -n "${BACKEND}" ] && echo "  - Backend: ${BACKEND}"
+            [ -n "${VAR_FILE}" ] && echo "  - Var file: ${VAR_FILE}"
+            [ -n "${PLAN_FILE}" ] && echo "  - Plan file: ${PLAN_FILE}"
           fi
           if [ -n "${GO_VERSION}${TEST_DIR}${TEST_PATTERN}${TEST_TIMEOUT}" ]; then
             echo "- Terratest: go=${GO_VERSION} dir=${TEST_DIR} pattern=${TEST_PATTERN} timeout=${TEST_TIMEOUT}"
           fi
+          if [ -n "${APP}${ACTION_TYPE}${REGION}" ]; then
+            echo "- Context: app=${APP:-n/a} action=${ACTION_TYPE:-n/a} region=${REGION:-n/a}"
+          fi
           if [ -n "${NOTES}" ]; then
             echo "- Notes: ${NOTES}"
           fi
-          echo
-          echo "----------------------------------------"
-          echo "Workflow Input Summary"
-          echo "----------------------------------------"
-          echo "Environment : ${ENVIRONMENT}"
-          echo "Application : ${APP}"
-          echo "Region      : ${REGION}"
-          echo "Action Type : ${ACTION_TYPE}"
-          echo "Triggered by: ${ACTOR}"
-          echo "Repository  : ${REPOSITORY}"
-          echo "Workflow    : ${WORKFLOW}"
-          echo "Run ID      : ${RUN_ID}"
-          echo "Run Number  : ${RUN_NUMBER}"
-          echo "----------------------------------------"
         } >> "$GITHUB_STEP_SUMMARY"
