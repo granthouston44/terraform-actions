@@ -1,0 +1,28 @@
+name: Terraform Destroy
+description: Compute backend path from environment and run terraform destroy with env-scoped tfvars. Assumes AWS credentials configured by the caller.
+author: Tesco Terraform Tooling Team
+inputs:
+  working_directory:
+    description: Directory containing Terraform configuration.
+    required: false
+    default: "."
+  environment:
+    description: Environment name (sandbox/dev/prod) used to derive backend path
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Terraform init
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        ENV_NAME="${{ inputs.environment }}"
+        terraform init -input=false -reconfigure -backend-config="env/${ENV_NAME}/${ENV_NAME}.tfbackend"
+
+    - name: Terraform destroy
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        ENV_NAME="${{ inputs.environment }}"
+        terraform destroy -input=false -auto-approve -var-file="env/${ENV_NAME}/${ENV_NAME}.tfvars"
+

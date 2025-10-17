@@ -1,0 +1,73 @@
+name: Terraform Destroy
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        description: Path to the Terraform module root.
+        required: true
+        type: string
+      environment:
+        description: Environment name used for backend/vars and role resolution.
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      working_directory:
+        description: Path to the Terraform module root.
+        required: true
+        default: "."
+      environment:
+        description: Environment name (drives backend/vars/approval/role)
+        required: true
+        default: "prod"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-destroy-${{ inputs.working_directory }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  approval:
+    name: Destroy Approval Gate
+    if: ${{ github.ref_name == 'main' }}
+    runs-on: ubuntu-latest
+    environment: ${{ format('{0}-deploy', inputs.environment) }}
+    steps:
+      - name: Await environment approval
+        run: echo "Awaiting approval in environment '${{ format('{0}-deploy', inputs.environment) }}'"
+
+  destroy:
+    name: Destroy
+    runs-on: ubuntu-latest
+    needs: [approval]
+    environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ims-terraform-infrastructure-role-${{ inputs.environment }}
+          aws-region: eu-west-1
+          role-session-name: github-actions
+
+      - name: Terraform setup
+        uses: tescotestims/terraform-actions/.github/actions/terraform-setup@main
+        with:
+          environment: ${{ inputs.environment }}
+          working_directory: ${{ inputs.working_directory }}
+
+      - name: Terraform destroy
+        uses: tescotestims/terraform-actions/.github/actions/terraform-destroy@main
+        with:
+          working_directory: ${{ inputs.working_directory }}
+          environment: ${{ inputs.environment }}
+

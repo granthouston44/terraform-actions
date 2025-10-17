@@ -60,7 +60,7 @@ Run terraform plan for a given environment and upload plan artifacts for cross-j
 Note: Ensure Terraform is installed first (use `terraform-setup`).
 
 ### `.github/actions/terraform-apply`
-Download the previously uploaded plan artifact and apply it for a given environment.
+Apply the configuration for a given environment (file-driven backend + tfvars). Assumes `terraform-setup` has run.
 
 ```yaml
 - uses: org/terraform-actions/.github/actions/terraform-apply@v1
@@ -69,10 +69,22 @@ Download the previously uploaded plan artifact and apply it for a given environm
 ```
 Note: Ensure Terraform is installed first (use `terraform-setup`).
 
+### `.github/actions/terraform-destroy`
+Destroy the configuration for a given environment (file-driven backend + tfvars). Assumes `terraform-setup` has run.
+
+```yaml
+- uses: org/terraform-actions/.github/actions/terraform-destroy@v1
+  with:
+    environment: sandbox
+```
+
 ## Reusable Workflow
 
 ### `.github/workflows/terraform-module.yml`
 Recommended pattern: stage-gated workflows that compose `terraform-setup` → `terraform-plan` (artifact) → `terraform-apply`.
+
+### `.github/workflows/terraform-destroy.yml`
+Stage-gated destroy with a protected `<env>-deploy` approval environment, then init + destroy in `<env>`.
 
 ## Migration Guide
 
