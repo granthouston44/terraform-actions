@@ -12,17 +12,9 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Terraform init
-      shell: bash
-      working-directory: ${{ inputs.working_directory }}
-      run: |
-        ENV_NAME="${{ inputs.environment }}"
-        terraform init -input=false -reconfigure -backend-config="env/${ENV_NAME}/${ENV_NAME}.tfbackend"
-
     - name: Terraform destroy
       shell: bash
       working-directory: ${{ inputs.working_directory }}
       run: |
         ENV_NAME="${{ inputs.environment }}"
         terraform destroy -input=false -auto-approve -var-file="env/${ENV_NAME}/${ENV_NAME}.tfvars"
-

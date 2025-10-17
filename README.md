@@ -59,6 +59,16 @@ Run terraform plan for a given environment and upload plan artifacts for cross-j
 ```
 Note: Ensure Terraform is installed first (use `terraform-setup`).
 
+### `.github/actions/terraform-plan-destroy`
+Run terraform plan -destroy for a given environment and upload plan artifacts for cross-job reuse.
+
+```yaml
+- uses: org/terraform-actions/.github/actions/terraform-plan-destroy@v1
+  with:
+    environment: sandbox
+```
+Note: Ensure Terraform is installed first (use `terraform-setup`).
+
 ### `.github/actions/terraform-apply`
 Apply the configuration for a given environment (file-driven backend + tfvars). Assumes `terraform-setup` has run.
 

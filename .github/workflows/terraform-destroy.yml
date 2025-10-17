@@ -35,9 +35,6 @@ jobs:
     name: Plan Destroy
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-    defaults:
-      run:
-        working-directory: ${{ inputs.working_directory }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,44 +54,10 @@ jobs:
 
       - name: Terraform plan (destroy)
         id: destroy_plan
-        shell: bash
-        run: |
-          ENV_NAME="${{ inputs.environment }}"
-          PLAN_FILE="destroy-plan-${ENV_NAME}.tfplan"
-          set +e
-          terraform plan -destroy -input=false -no-color -detailed-exitcode -out="$PLAN_FILE" -var-file="env/${ENV_NAME}/${ENV_NAME}.tfvars"
-          ec=$?
-          if [ $ec -eq 0 ] || [ $ec -eq 2 ]; then
-            status=$([ $ec -eq 2 ] && echo changes || echo no_changes)
-            echo "destroy_plan_status=$status" >> "$GITHUB_OUTPUT"
-            echo "destroy_plan_exit_code=$ec" >> "$GITHUB_OUTPUT"
-            echo "destroy_plan_file=$(pwd)/$PLAN_FILE" >> "$GITHUB_OUTPUT"
-            exit 0
-          else
-            exit $ec
-          fi
-
-      - name: Capture destroy plan outputs
-        id: capture
-        if: ${{ success() }}
-        shell: bash
-        run: |
-          ENV_NAME="${{ inputs.environment }}"
-          PLAN_FILE="destroy-plan-${ENV_NAME}.tfplan"
-          terraform show -no-color "$PLAN_FILE" > destroy-plan.txt
-          terraform show -json "$PLAN_FILE" > destroy-plan.json
-          echo "destroy_plan_text_path=$(pwd)/destroy-plan.txt" >> "$GITHUB_OUTPUT"
-          echo "destroy_plan_json_path=$(pwd)/destroy-plan.json" >> "$GITHUB_OUTPUT"
-
-      - name: Upload destroy plan artifact
-        uses: actions/upload-artifact@v4
+        uses: tescotestims/terraform-actions/.github/actions/terraform-plan-destroy@main
         with:
-          name: tfdestroy-plan
-          path: |
-            ${{ steps.destroy_plan.outputs.destroy_plan_file }}
-            ${{ steps.capture.outputs.destroy_plan_text_path }}
-            ${{ steps.capture.outputs.destroy_plan_json_path }}
-          if-no-files-found: ignore
+          working_directory: ${{ inputs.working_directory }}
+          environment: ${{ inputs.environment }}
 
   approval:
     name: Destroy Approval Gate
