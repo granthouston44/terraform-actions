@@ -2,7 +2,7 @@
 
 Reusable GitHub composite actions maintained by the Tesco tooling team to standardise Terraform workflows across repositories.
 
-## Provided Actions
+## Composite Actions
 
 ### `.github/actions/terraform-setup`
 Bootstrap Terraform repositories: configure private module access, install Terraform, run fmt/validate, and run tfsec (always on).
@@ -46,8 +46,21 @@ Template variables:
 - `${environment}` — expands to the workflow input `environment` passed to `terraform-setup`.
 - Other variables are not set by default; you can still rely on `envsubst` to expand any variables you define in prior steps.
 
-### `.github/actions/terraform-plan-apply`
-Removed in v1.0.0. Prefer composing `terraform-setup` → `terraform-plan` and `terraform-apply` in workflows with stage gates.
+### `.github/actions/print-run-context`
+Append a human‑readable summary (title, repo/run links, env, Terraform/Terratest metadata) to the job summary.
+
+- Inputs: `title`, `environment`, `aws_account_id`, `aws_role_arn`, `working_directory`, `backend_config_file`, `var_file`, `plan_file`, `terraform_version`, `go_version`, `terratest_*`, `notes`
+- Example:
+```yaml
+- uses: tescotestims/terraform-actions/.github/actions/print-run-context@v1
+  with:
+    title: Terraform Module Workflow Context
+    environment: sandbox
+    aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
+    working_directory: infra
+    plan_file: plan-sandbox.tfplan
+    terraform_version: 1.8.5
+```
 
 ### `.github/actions/terraform-plan`
 Run terraform plan for a given environment and upload plan artifacts for cross-job reuse.
@@ -88,31 +101,61 @@ Destroy the configuration for a given environment (file-driven backend + tfvars)
     environment: sandbox
 ```
 
-## Reusable Workflow
+## Reusable Workflows
 
 ### `.github/workflows/terraform-module.yml`
-Single reusable workflow for `plan`, `apply`, and `destroy` (via `action` input). Uses `<env>-deploy` for approval gates and `<env>` for execution.
+Single reusable workflow for `plan`, `apply`, and `destroy` (via `action` input`). Uses `<env>-deploy` for approval gates and `<env>` for execution.
+
+- Inputs: `working_directory`, `environment`, `action` (plan|apply|destroy)
+- Behavior:
+  - plan: setup → plan (artifacts + summary)
+  - apply: setup → plan → approval in `<env>-deploy` → setup → apply
+  - destroy: setup → plan-destroy (artifacts + summary) → approval in `<env>-deploy` → setup → destroy
+- Example:
+```yaml
+jobs:
+  module:
+    uses: tescotestims/terraform-actions/.github/workflows/terraform-module.yml@v1
+    with:
+      working_directory: infra
+      environment: sandbox
+      action: apply
+    secrets: inherit
+```
+
+### `.github/workflows/terratest.yml`
+Reusable Terratest workflow. Sets up Go + Terraform, optionally assumes a role, runs tests via gotestsum, publishes summary + artifacts.
+
+- Inputs: `go_version`, `terraform_version`, `working_directory` (default `test`), `test_pattern` (default `all`), `timeout`, `environment`
+- Example:
+```yaml
+jobs:
+  terratest:
+    uses: tescotestims/terraform-actions/.github/workflows/terratest.yml@v1
+    with:
+      go_version: 1.23.6
+      terraform_version: 1.8.5
+      working_directory: test
+      test_pattern: all
+      environment: sandbox
+    secrets: inherit
+```
+
+### `.github/workflows/aws-account-bootstrap.yml`
+Opinionated workflow to plan/apply bootstrap roots behind an approval gate.
+
+- Inputs: `working_directory` (default `.`), `environment`, `apply_auto_approve` (bool)
 
 
-## Migration Guide
+## Requirements
 
-v1.0.0 (breaking changes):
-- Removed `terraform-plan-apply` composite; use `terraform-setup` → `terraform-plan` → `terraform-apply`.
-- `terraform-setup` simplified: always runs fmt/validate/tfsec; removed token/WD/toggles; relies on job working directory.
-- `terraform-plan` and `terraform-apply` now assume Terraform is installed (run `terraform-setup` first); trimmed inputs.
-- `run-terratest` simplified: standardized on `gotestsum`; removed Terraform setup and `working_directory` input; relies on job working directory.
-
-Consumer updates:
-- Update action refs from `@v0` to `@v1`.
-- Replace usages of `terraform-plan-apply` with separate plan/apply steps.
-- Insert `terraform-setup@v1` before plan/apply to install Terraform and run fmt/validate/tfsec.
-- Set `defaults.run.working-directory` for infra/test paths instead of passing WD inputs.
+- Org settings: allow reuse of workflows from private repositories (for cross‑repo reuse)
+- Repo vars: `AWS_ACCOUNT_ID` (or equivalent)
+- Environments:
+  - `<env>` (e.g. `sandbox`) — unprotected; holds env‑scoped vars/secrets; used by plan/apply/destroy
+  - `<env>-deploy` — protected; Required reviewers or Wait timer; used only for approval gates
+- IAM OIDC trust: allow `repo:<org>/<repo>:environment:<env>` in the role trust policy
 
 ## Versioning
 
-Adopts semantic versioning with major tags (`v1`). Reference actions as `@v1` for stable major, or `@v1.0.0` for a fixed patch release.
-
-## Roadmap
-
-- Publish reusable workflows that compose these actions for common Terraform module lifecycles.
-- Add Trivy/Terratest reporting integrations once standardised across the platform.
+Use `@v1` for stable major, or `@main` while iterating.
