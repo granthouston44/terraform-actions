@@ -43,9 +43,8 @@ runs:
         OUT_DIR="env/${ENV_NAME}"
         mkdir -p "$OUT_DIR"
         OUT_FILE="${OUT_DIR}/${ENV_NAME}.tfbackend"
-        # Provide common variable names for templates
+        # Expose the selected environment for templates
         export environment="$ENV_NAME"
-        export env="$ENV_NAME"
         if command -v envsubst >/dev/null 2>&1; then
           envsubst < "$TEMPLATE_PATH" > "$OUT_FILE"
         else
