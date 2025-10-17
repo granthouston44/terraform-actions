@@ -93,8 +93,6 @@ Destroy the configuration for a given environment (file-driven backend + tfvars)
 ### `.github/workflows/terraform-module.yml`
 Single reusable workflow for `plan`, `apply`, and `destroy` (via `action` input). Uses `<env>-deploy` for approval gates and `<env>` for execution.
 
-### `.github/workflows/terraform-destroy.yml` (legacy)
-Kept for compatibility; prefer `terraform-module.yml` with `action: destroy`.
 
 ## Migration Guide
 
