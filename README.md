@@ -84,7 +84,7 @@ Destroy the configuration for a given environment (file-driven backend + tfvars)
 Recommended pattern: stage-gated workflows that compose `terraform-setup` → `terraform-plan` (artifact) → `terraform-apply`.
 
 ### `.github/workflows/terraform-destroy.yml`
-Stage-gated destroy with a protected `<env>-deploy` approval environment, then init + destroy in `<env>`.
+Stage-gated destroy: compute and upload a destroy plan, then pause for approval in protected `<env>-deploy`, then init + destroy in `<env>`.
 
 ## Migration Guide
 
