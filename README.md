@@ -9,7 +9,7 @@ Bootstrap Terraform repositories: configure private module access, install Terra
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: org/terraform-actions/.github/actions/terraform-setup@v1
+- uses: tescotestims/terraform-actions/.github/actions/terraform-setup@v1
   with:
     terraform_version: 1.8.5 # optional; defaults to 1.8.5
 ```
@@ -24,7 +24,7 @@ Key inputs:
 Install the Go toolchain and Terraform CLI, optionally assume an AWS role, and execute Terratest suites using gotestsum with a concise summary.
 
 ```yaml
-- uses: org/terraform-actions/.github/actions/run-terratest@v1
+- uses: tescotestims/terraform-actions/.github/actions/run-terratest@v1
   with:
     go_version: 1.23.6
     terraform_version: 1.8.5
@@ -53,7 +53,7 @@ Removed in v1.0.0. Prefer composing `terraform-setup` → `terraform-plan` and `
 Run terraform plan for a given environment and upload plan artifacts for cross-job reuse.
 
 ```yaml
-- uses: org/terraform-actions/.github/actions/terraform-plan@v1
+- uses: tescotestims/terraform-actions/.github/actions/terraform-plan@v1
   with:
     environment: sandbox
 ```
@@ -63,7 +63,7 @@ Note: Ensure Terraform is installed first (use `terraform-setup`).
 Run terraform plan -destroy for a given environment and upload plan artifacts for cross-job reuse.
 
 ```yaml
-- uses: org/terraform-actions/.github/actions/terraform-plan-destroy@v1
+- uses: tescotestims/terraform-actions/.github/actions/terraform-plan-destroy@v1
   with:
     environment: sandbox
 ```
@@ -73,7 +73,7 @@ Note: Ensure Terraform is installed first (use `terraform-setup`).
 Apply the configuration for a given environment (file-driven backend + tfvars). Assumes `terraform-setup` has run.
 
 ```yaml
-- uses: org/terraform-actions/.github/actions/terraform-apply@v1
+- uses: tescotestims/terraform-actions/.github/actions/terraform-apply@v1
   with:
     environment: sandbox
 ```
@@ -83,7 +83,7 @@ Note: Ensure Terraform is installed first (use `terraform-setup`).
 Destroy the configuration for a given environment (file-driven backend + tfvars). Assumes `terraform-setup` has run.
 
 ```yaml
-- uses: org/terraform-actions/.github/actions/terraform-destroy@v1
+- uses: tescotestims/terraform-actions/.github/actions/terraform-destroy@v1
   with:
     environment: sandbox
 ```
@@ -91,10 +91,10 @@ Destroy the configuration for a given environment (file-driven backend + tfvars)
 ## Reusable Workflow
 
 ### `.github/workflows/terraform-module.yml`
-Recommended pattern: stage-gated workflows that compose `terraform-setup` → `terraform-plan` (artifact) → `terraform-apply`.
+Single reusable workflow for `plan`, `apply`, and `destroy` (via `action` input). Uses `<env>-deploy` for approval gates and `<env>` for execution.
 
-### `.github/workflows/terraform-destroy.yml`
-Stage-gated destroy: compute and upload a destroy plan, then pause for approval in protected `<env>-deploy`, then init + destroy in `<env>`.
+### `.github/workflows/terraform-destroy.yml` (legacy)
+Kept for compatibility; prefer `terraform-module.yml` with `action: destroy`.
 
 ## Migration Guide
 
