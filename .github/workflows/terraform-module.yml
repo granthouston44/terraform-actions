@@ -27,13 +27,14 @@ on:
         required: true
         default: "prod"
       action:
-        description: Which action to perform (plan or apply)
+        description: Which action to perform (plan, apply, destroy)
         required: true
         default: apply
         type: choice
         options:
           - plan
           - apply
+          - destroy
 
 permissions:
   contents: read
@@ -141,6 +142,80 @@ jobs:
 
       - name: Terraform apply
         uses: tescotestims/terraform-actions/.github/actions/terraform-apply@main
+        with:
+          working_directory: ${{ inputs.working_directory }}
+          environment: ${{ inputs.environment }}
+
+  plan-destroy:
+    name: Plan Destroy
+    if: ${{ inputs.action == 'destroy' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ims-terraform-infrastructure-role-${{ inputs.environment }}
+          aws-region: eu-west-1
+          role-session-name: github-actions
+
+      - name: Terraform setup
+        uses: tescotestims/terraform-actions/.github/actions/terraform-setup@main
+        with:
+          environment: ${{ inputs.environment }}
+          working_directory: ${{ inputs.working_directory }}
+
+      - name: Terraform plan (destroy)
+        id: destroy_plan
+        uses: tescotestims/terraform-actions/.github/actions/terraform-plan-destroy@main
+        with:
+          working_directory: ${{ inputs.working_directory }}
+          environment: ${{ inputs.environment }}
+
+  destroy-approval:
+    name: Destroy Approval Gate
+    if: ${{ github.ref_name == 'main' && inputs.action == 'destroy' }}
+    runs-on: ubuntu-latest
+    needs: [plan-destroy]
+    environment: ${{ format('{0}-deploy', inputs.environment) }}
+    steps:
+      - name: Await environment approval
+        run: echo "Awaiting approval in environment '${{ format('{0}-deploy', inputs.environment) }}'"
+
+  destroy:
+    name: Destroy
+    if: ${{ github.ref_name == 'main' && inputs.action == 'destroy' }}
+    runs-on: ubuntu-latest
+    needs: [plan-destroy, destroy-approval]
+    environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ims-terraform-infrastructure-role-${{ inputs.environment }}
+          aws-region: eu-west-1
+          role-session-name: github-actions
+
+      - name: Terraform setup
+        uses: tescotestims/terraform-actions/.github/actions/terraform-setup@main
+        with:
+          environment: ${{ inputs.environment }}
+          working_directory: ${{ inputs.working_directory }}
+
+      - name: Terraform destroy
+        uses: tescotestims/terraform-actions/.github/actions/terraform-destroy@main
         with:
           working_directory: ${{ inputs.working_directory }}
           environment: ${{ inputs.environment }}
